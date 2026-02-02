@@ -2,18 +2,34 @@
 library(rairtable)
 library(dplyr)
 library(tidyr)
+library(glue)
+library(purrr)
+library(stringr)
 source("info.R")
 
 param_table <- airtable(table = "parameters", base = "appe2p0S3xk4DL2qc")
 params <- read_airtable(param_table) |>
   as_tibble() |>
   mutate(across(where(is.list), as.character)) |>
-  mutate(across(where(is.character), \(s) na_if(s, "NULL"))) |>
-  select(task_code = item_task, language, item_uid, item_group, item_entry, difficulty, discrimination, itemtype, n_responses) |>
+  mutate(across(where(is.character), \(s) na_if(s, "NULL")))
+
+items <- params |>
+  select(-airtable_record_id, -param_id) |>
+  rename(task_code = item_task) |>
+  # select(task_code = item_task, language, item_uid, item_group, item_entry, difficulty, discrimination, itemtype, n_responses) |>
   left_join(task_info) |>
   mutate(item_group = if_else(is.na(item_group), task_code, item_group)) |>
   arrange(task_label, language, item_uid)
 
+file_link <- \(file_id, version) glue("https://stanford.redivis.com/datasets/e97h-009zz0c49/files/{file_id}?v={version}")
+models <- items |>
+  distinct(task_code, language, registry_version, added_at_date, itemtype, groups, n_runs, file_id) |>
+  mutate(registry_version = registry_version |> str_remove("^v") |> str_replace_all("_", "."),
+         file_link = map2_chr(file_id, registry_version, file_link)) |>
+  mutate(itemtype = itemtype |> forcats::fct_recode("Rasch" = "rasch", "2PL" = "2pl"),
+         invariance_label = if_else(!is.na(language), "by language", "scalar invariant"))
+
 # pass to OJS
-ojs_define(params = params)
+ojs_define(items_ = items)
+ojs_define(models_ = models)
 ```

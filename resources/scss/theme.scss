@@ -27,3 +27,10 @@ $primary: #f7ca69;
 :where(.color-legend-swatches) {
   font-family: var(--sans-serif) !important;
 }
+
+.source {
+  font-style: italic;
+  font-size: small;
+  margin-top: 1em;
+  a { color: #2c728e; }
+}
