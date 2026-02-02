@@ -1,21 +1,410 @@
 ---
-title: "Palmer Penguins"
-subtitle: "A great dataset for data exploration & visualization"
-description: |
-  Data were collected and made available by [Dr. Kristen Gorman](https://www.uaf.edu/cfos/people/faculty/detail/kristen-gorman.php) and the [Palmer Station, Antarctica LTER](https://pallter.marine.rutgers.edu/), a member of the [Long Term Ecological Research Network](https://lternet.edu/).
+title: "LEVANTE scores"
+subtitle: ""
+description: ""
 ---
 
-::: {layout-ncol=2}
-![Artwork by \@allison_horst](images/lter_penguins.png)
+{{< include _load-data-scores.qmd >}}
 
-![](images/culmen_depth.png)
+{{< include components/_interval.qmd >}}
+{{< include components/_tol.qmd >}}
+{{< include components/_style.qmd >}}
+
+```{ojs prelims}
+Plot = import("https://esm.sh/@observablehq/plot@0.6.17")
+scores = transpose(data)
+```
+
+```{ojs info}
+// info for numeric variables
+// tip = include in tooltip? range = slider extent (if applicable)
+// note: filter property not actually used programmatically
+vi = ({
+  "age":           { label: "Age (years)",      filter: true,  tip: true,  range: [5, 12] },
+  "age_gap":       { label: "Age gap (months)", filter: true,  tip: false, range: [0, 24] },
+  "score":         { label: "Score",            filter: false, tip: true,  range: null    },
+  "score_se":      { label: "Score SE",         filter: false, tip: true,  range: null    },
+  "num_attempted": { label: "num_attempted",    filter: false, tip: true,  range: null    }
+})
+
+//d3.max(line_summary.map(d => d.age_gap))
+
+// info for categorical variables
+// color = include in color dropdown?, tip = include in tooltip?
+// note: filter property not actually used programmatically
+ti = ({
+  "site":          { label: "Site",          filter: true,  color: true,  tip: true  },
+  "dataset":       { label: "Dataset",       filter: true,  color: true,  tip: true  },
+  "task_label":    { label: "Task",          filter: true,  color: false, tip: false },
+  "language":      { label: "Language",      filter: true,  color: true,  tip: false },
+  "adaptive":      { label: "Adaptive",      filter: true,  color: true,  tip: false },
+  "score_type":    { label: "Score type",    filter: true,  color: true,  tip: false },
+  "scoring_model": { label: "Scoring model", filter: true,  color: true,  tip: false },
+  "run_id":        { label: "run_id",        filter: false, color: false, tip: true  },
+})
+```
+
+```{ojs filter-funs}
+// formatting function for how two ended slider displays selected range
+// e.g. [5, 12]
+interval_format = ([start, end]) => `[${Plot.formatNumber("en-US")(start)}; ${Plot.formatNumber("en-US")(end)}]`
+
+// integer-rounded min and max of an array
+// range = (x) => [Math.floor(d3.min(x)), Math.ceil(d3.max(x))]
+
+// interval input for a given numeric variable
+var_interval = (v) => {
+  return interval(vi[v].range, {
+    step: 1, label: vi[v].label, format: interval_format, width: "95%", color: "#f7ca69"
+  })
+}
+
+// checkbox input for a given categorical variable
+cat_checkbox = (t) => Inputs.checkbox(tags[t], {value: tags[t]})
+```
+
+:::::: {.column-screen-inset}
+
+::::: {.panel-tabset}
+
+## Scores
+
+::::: {layout="[ [25,75] ]"}
+
+:::: {.panel-input}
+
+{{< bi filter >}} _Filter by..._
+
+::: {.side-inputs}
+
+::: {.filters-container}
+
+```{ojs filter-age}
+viewof age_range = var_interval("age")
+```
+
+```{ojs filter-age-gap}
+viewof age_gap_range = var_interval("age_gap")
+```
+
+::: {.callout-note collapse="true"}
+## {{< bi geo class=header-icon >}}Site
+
+```{ojs filter-site}
+viewof site_vals = cat_checkbox("site")
+```
 :::
 
-{{< include _load-data.qmd >}}
+::: {.callout-note collapse="true"}
+## {{< bi archive class=header-icon >}}Dataset
 
-{{< include _scatter_hist.qmd >}}
+```{ojs filter-dataset}
+viewof dataset_vals = cat_checkbox("dataset")
+```
+:::
 
-<!-- {{< include _scatter.qmd >}} -->
+::: {.callout-note collapse="true"}
+## {{< bi ui-checks-grid class=header-icon >}}Task
 
-<!-- {{< include _hist.qmd >}} -->
+```{ojs filter-task_label}
+viewof task_label_vals = cat_checkbox("task_label")
+```
+:::
 
+::: {.callout-note collapse="true"}
+## {{< bi translate class=header-icon >}}Language
+
+```{ojs filter-language}
+viewof language_vals = cat_checkbox("language")
+```
+:::
+
+::: {.callout-note collapse="true"}
+## {{< bi speedometer class=header-icon >}}Adaptive
+
+```{ojs filter-adaptive}
+viewof adaptive_vals = cat_checkbox("adaptive")
+```
+:::
+
+::: {.callout-note collapse="true"}
+## {{< bi clipboard-data class=header-icon >}}Score type
+
+```{ojs filter-score_type}
+viewof score_type_vals = cat_checkbox("score_type")
+```
+:::
+
+::: {.callout-note collapse="true"}
+## {{< bi sliders class=header-icon >}}Scoring model
+
+```{ojs filter-scoring_model}
+viewof scoring_model_vals = cat_checkbox("scoring_model")
+```
+:::
+
+:::
+:::
+
+::::
+
+:::: {.panel-fill}
+
+```{ojs data-filtered}
+// generate range filter function for a given numeric variable and input range
+range_filter = (v, v_range) => {
+  return (d) => d[v] >= v_range[0] & d[v] <= v_range[1]
+}
+
+// generate overlap filter function for a given categorical variable and input values
+overlap_filter = (t, t_vals) => {
+  return (d) => t_vals.some(v => d[t].includes(v))
+}
+
+// generate overlap filter function as above but that defaults to including everything if input values empty
+overlap_null_filter = (t, t_vals) => {
+  return (d) => t_vals.length ? t_vals.some(v => d[t].includes(v)) : true
+}
+
+// specify range-based inputs (as variable, values)
+range_inputs = ([
+  { v: "age", vals: age_range },
+])
+
+// specify overlap-based inputs (as variable, values)
+overlap_inputs = ([
+  { v: "site",          vals: site_vals          },
+  { v: "dataset",       vals: dataset_vals       },
+  { v: "task_label",    vals: task_label_vals    },
+  { v: "language",      vals: language_vals      },
+  { v: "adaptive",      vals: adaptive_vals      },
+  { v: "score_type",    vals: score_type_vals    },
+  { v: "scoring_model", vals: scoring_model_vals },
+])
+
+// generate filter function for each input and combine them
+range_filters = range_inputs.map(({ v, vals }) => range_filter(v, vals))
+overlap_filters = overlap_inputs.map(({ v, vals }) => overlap_filter(v, vals))
+all_filters = [...range_filters, ...overlap_filters]
+
+// apply filters to score data
+sf = all_filters.reduce((sc, fun) => sc.filter(fun), scores)
+
+// apply age gap filter
+ag = ls.filter(d => d.age_gap === null || (d.age_gap >= age_gap_range[0] & d.age_gap <= age_gap_range[1]))
+ag_runs = ag.map(d => d.runs).flat()
+scoresf = sf.filter(d => ag_runs.includes(d.run_id))
+```
+
+:::: {.output-container}
+::: {.plot-container}
+
+::: {.plot-inputs}
+```{ojs long-toggle}
+// plot type selector
+viewof plot_type = Inputs.radio(
+  new Map([["Cross-sectional", "dot"], ["Longitudinal", "line"]]),
+  {value: "dot", label: "Data view"}
+)
+```
+
+```{ojs color-var}
+// plot color variable selector
+cat_array = Object.keys(ti).filter((t) => ti[t].color).map((t) => [ti[t].label, t])
+cat_vars = new Map([["None", null], ...cat_array])
+viewof color_var = Inputs.select(cat_vars, {value: "site", label: "Color"})
+```
+:::
+
+```{ojs score-plot-setup}
+x_var = "age"        // x
+y_var = "score"      // y
+r_var = "score_se"   // dot radius
+z_var = "user_id"    // line group
+f_var = "task_label" // facets
+
+//
+// plot colors
+// set up to keep color mapping consistent regardless of filters but include
+// only present values in legend
+//
+scheme = tol.QualMuted // color scheme
+default_color = scheme[0] // default color when there's no color variable
+unk_color = "lightgrey" // color for missing values
+plt_color = color_var || default_color // plot color variable
+// color variable values -- null or all possible values for variable except NA
+color_vals = color_var === null ? [default_color] : tags[color_var].filter((v) => v !== "NA")
+
+// domain: values + NA
+color_domain = [...color_vals, "NA"]
+// range: corresponding values from scheme + missing color
+color_range = [...scheme.slice(0, color_vals.length), unk_color]
+// map from domain to range
+color_map = color_domain.map((v, i) => [v, color_range[i]])
+// drop elements from map if values not in data
+colors = Object.fromEntries(color_map.filter(([k, v]) => scoresf.map((d) => d[color_var]).includes(k)))
+
+// create facet specification to emulate facet wrap
+// given data, column name to facet by, and number of columns
+facet_wrap = (df, col, ncol) => {
+  const keys = Array.from(d3.union(df.map((d) => d[col])));
+  const index = new Map(keys.map((key, i) => [key, i]));
+  const fx = (key) => index.get(key) % ncol;
+  const fy = (key) => Math.floor(index.get(key) / ncol);
+  return ({
+    fx: (d) => fx(d[col]),
+    fy: (d) => fy(d[col]),
+    text: Plot.text(keys, {fx, fy, dy: -12, frameAnchor: "top", fontWeight: "bold"})
+    //text: Plot.text(keys, {fx, fy, frameAnchor: "top", fontWeight: "bold"})
+  })
+}
+```
+
+```{ojs score-plot-dots}
+// channels for dot tooltips
+all_vars = [...Object.entries(ti), ...Object.entries(vi)] // all variables
+tip_vars = all_vars.filter(([k, v]) => v.tip) // variables with "tip" property
+dot_channels = Object.fromEntries(tip_vars.map(([k, v]) => [k, k]))
+
+// marks for dots
+dot_marks = Plot.marks(
+  // facet labels
+  dot_facet.text,
+  // points
+  Plot.dot(scoresf, {
+    x: x_var,
+    y: y_var,
+    r: r_var,
+    stroke: plt_color,
+    strokeOpacity: 0.5,
+    fx: dot_facet.fx,
+    fy: dot_facet.fy
+  }),
+  // regression lines
+  Plot.linearRegressionY(scoresf, {
+    x: x_var,
+    y: y_var,
+    stroke: "black",
+    fx: dot_facet.fx,
+    fy: dot_facet.fy
+  }),
+  // tooltips
+  Plot.tip(scoresf, Plot.pointer({
+    x: x_var,
+    y: y_var,
+    stroke: plt_color,
+    fx: dot_facet.fx,
+    fy: dot_facet.fy,
+    channels: dot_channels,
+    format: { fx: null, fy: null }
+  }))
+)
+```
+
+```{ojs score-plot-lines}
+// summary per line segment for tooltips
+ls = Array.from(
+  d3.group(sf, d => d[f_var], d => d[z_var]),
+  ([f_val, z_map]) => Array.from(
+    z_map,
+    ([z_val, points]) => ({
+      [f_var]: f_val,
+      [z_var]: z_val,
+      [color_var]: points[0][color_var],
+      [x_var]: d3.mean(points, d => d[x_var]),
+      [y_var]: d3.mean(points, d => d[y_var]),
+      n_scores: points.length,
+      age_gap: 12*(d3.max(points, d => d[x_var]) - d3.min(points, d => d[x_var])),
+      runs: points.map(d => d.run_id)
+//      [`${x_var}_mean`]: d3.mean(points, d => d[x_var]),
+//      [`${y_var}_mean`]: d3.mean(points, d => d[y_var]),
+//      [`${x_var}_range`]: d3.extent(points, d => d[x_var]),
+//      [`${y_var}_range`]: d3.extent(points, d => d[y_var]),
+    })
+  )
+).flat()
+line_summary = ls.filter(d => d.n_scores > 1)
+
+long_runs = line_summary.map(d => d.runs).flat()
+scoresl = scoresf.filter(d => long_runs.includes(d.run_id))
+
+// channels for line tooltips (everything in summary other than facet variable)
+//line_vars = Object.keys(line_summary[0]).filter(d => d !== f_var)
+line_vars = [color_var, z_var, "n_scores", "age_gap"]
+line_channels = Object.fromEntries(line_vars.map(k => [k, k]))
+
+// marks for lines
+line_marks = Plot.marks(
+  // facet labels
+  line_facet.text,
+  // spaghetti lines
+  Plot.line(scoresl, {
+    x: x_var,
+    y: y_var,
+    z: z_var,
+    stroke: plt_color,
+    fx: line_facet.fx,
+    fy: line_facet.fy
+  }),
+  // regression lines
+  Plot.linearRegressionY(scoresl, {
+    x: x_var,
+    y: y_var,
+    stroke: "black",
+    fx: line_facet.fx,
+    fy: line_facet.fy
+  }),
+    // tooltips
+  Plot.tip(line_summary, Plot.pointer({
+    x: x_var,
+    y: y_var,
+    stroke: plt_color,
+    fx: line_summary_facet.fx,
+    fy: line_summary_facet.fy,
+    channels: line_channels,
+    format: { x: null, y: null, fx: null, fy: null }
+  }))
+)
+```
+
+```{ojs score-plot}
+dot_facet = facet_wrap(scoresf, f_var, 6)  // facetting for dots
+line_facet = facet_wrap(scoresl, f_var, 6) // facetting for lines
+line_summary_facet = facet_wrap(line_summary, f_var, 6) // facetting for line summary
+
+// map plot_type values to marks
+marks = ({ dot: dot_marks, line: line_marks })
+
+// values for x axis ticks -- age range with step size 1
+ages = d3.range(age_range[0], age_range[1] + 1, 1)
+
+// plot scores!
+scorePlot = Plot.plot({
+  style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
+  width: 1000,
+   grid: true,
+      x: { line: true, ticks: ages, tickFormat: d3.format(".0f") },
+      y: { line: true },
+      r: { transform: (s) => s ? 1/s : 1, range: [0, 4] }, // radius inversely proportional
+  color: {
+    domain: Object.keys(colors),
+    range: Object.values(colors),
+    legend: color_var !== null,
+    className: "color-legend"
+  },
+  facet: { axis: null },
+  marks: marks[plot_type]
+})
+```
+
+:::
+::::
+
+::::
+
+:::::
+
+## Items
+
+:::::
+::::::

@@ -1,14 +1,16 @@
 project:
-  title: "Palmer Penguins"
+  title: "LEVANTE"
   type: datapage
 
 website:
   navbar:
-    logo: images/logo.png
+    logo: ""
 
 format:
   datapage-html:
-    theme: theme.scss
+    theme: [resources/scss/theme.scss, resources/scss/layout.scss]
+    mainfont: whitney-book, system-ui, sans-serif
+    callout-icon: false
 
 execute: 
   echo: false
@@ -16,7 +18,11 @@ execute:
   warning: false
   error: false
 
+mode: local
 redivis:
-  user: datapages
-  dataset: palmerpenguins
-  table: penguins
+  user: levante
+  dataset: levante-data-pilots-processed
+  table: scores
+
+resources:
+  - "resources/fonts/*"
