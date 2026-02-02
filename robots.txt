@@ -1,1 +1,1 @@
-Sitemap: https://datapages.github.io/datapage/sitemap.xml
+Sitemap: https://levante-framework.github.io/levante-datapage/sitemap.xml
