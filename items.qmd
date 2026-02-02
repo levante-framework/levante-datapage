@@ -1,0 +1,52 @@
+{{< include _load-data-items.qmd >}}
+
+{{< include components/_interval.qmd >}}
+{{< include components/_tol.qmd >}}
+{{< include components/_style.qmd >}}
+
+```{ojs prelims}
+Plot = import("https://esm.sh/@observablehq/plot@0.6.17")
+items = transpose(params)
+```
+
+```{ojs}
+tasks = d3.group(items, d => d.task_label)
+viewof task_items = Inputs.select(tasks, { label: "Task", value: tasks.get("Math") })
+groups = new Set(task_items.map(d => d.item_group))
+
+item_vars = ["item_group", "item_entry", "difficulty", "n_responses"]
+item_channels = Object.fromEntries(item_vars.map(k => [k, k]))
+```
+
+```{ojs}
+Plot.plot({
+  style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
+  width: 700,
+ height: Math.max(150, 50 * groups.size),
+ marginLeft: 110,
+   grid: true,
+  facet: { label: null, grid: true },
+  //fy: { padding: 20 },
+  x: { line: true },
+  //y: { insetBottom: 100 },
+  color: { legend: false, scheme: "viridis" },
+  r: {range: [1, 4] },
+  marks: [
+    //Plot.frame(),
+    Plot.dot(task_items, Plot.dodgeY("middle", {
+      x: "difficulty",
+      fy: "item_group",
+      fill: "item_group",
+      r: "n_responses",
+      sort: {fy: "x", color: "x", reduce: "median"}
+    })),
+    Plot.tip(task_items, Plot.pointer({
+      x: "difficulty",
+      fy: "item_group",
+      fill: "item_group",
+      channels: item_channels,
+      format: { fy: null }
+    }))
+  ]
+})
+```

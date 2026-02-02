@@ -1,0 +1,19 @@
+```{r}
+library(rairtable)
+library(dplyr)
+library(tidyr)
+source("info.R")
+
+param_table <- airtable(table = "parameters", base = "appe2p0S3xk4DL2qc")
+params <- read_airtable(param_table) |>
+  as_tibble() |>
+  mutate(across(where(is.list), as.character)) |>
+  mutate(across(where(is.character), \(s) na_if(s, "NULL"))) |>
+  select(task_code = item_task, language, item_uid, item_group, item_entry, difficulty, discrimination, itemtype, n_responses) |>
+  left_join(task_info) |>
+  mutate(item_group = if_else(is.na(item_group), task_code, item_group)) |>
+  arrange(task_label, language, item_uid)
+
+# pass to OJS
+ojs_define(params = params)
+```
