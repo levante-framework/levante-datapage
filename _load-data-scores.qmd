@@ -1,10 +1,4 @@
-```{r}
-# dataset <- redivis::organization("datapages")$dataset("palmerpenguins")
-# penguins <- dataset$table("penguins")$to_tibble()
-# ojs_define(data = penguins)
-```
-
-```{r}
+```{r load-scores}
 library(redivis)
 library(dplyr)
 source("info.R")

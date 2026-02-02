@@ -1,4 +1,4 @@
-```{ojs}
+```{ojs tol}
 tol = ({
     QualBright: ['#4477AA', '#EE6677', '#228833', '#CCBB44', '#66CCEE','#AA3377'],
     QualHighContrast: ['#004488', '#DDAA33', '#BB5566'],
