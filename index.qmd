@@ -507,17 +507,27 @@ items = transpose(items_)
 models = transpose(models_)
 
 // group items by test, use for task selector
-tasks = d3.group(items, d => d.task_label)
+items_coded = items.map(d => ({...d, lang_group: `${d.item_group} | ${d.language}` }))
+tasks = d3.group(items_coded, d => d.task_label)
 viewof task_items = Inputs.select(tasks, { label: "Task", value: tasks.get("Math") })
 item_groups = new Set(task_items.map(d => d.item_group))
 
 // channels for item tooltips
-item_vars = ["item_group", "item_uid", "n_responses", "difficulty"] //"item_entry", "difficulty", 
+item_vars = ["item_group", "item_uid", "n_responses", "difficulty"]
 item_channels = Object.fromEntries(item_vars.map(k => [k, k]))
 
 task = task_items[0].task_code // current items' task code
 model = models.filter(t => t.task_code === task)[0] // current items' model type
 by_lang = model.language !== undefined // whether items' model is by language
+
+// sort order of languages -- alpha
+langs = d3.sort(new Set(task_items.map(d => d.language)))
+// sort order of item groups -- median difficulty (in first language)
+l0_items = task_items.filter(d => d.language === langs[0])
+groups = d3.groupSort(l0_items, g => d3.median(g, d => d.difficulty), d => d.item_group)
+// sort order of language + item group -- above combined
+indeces = d3.groups(task_items, d => d.lang_group).map(([lang_group, vals]) => [lang_group, langs.indexOf(vals[0].language), groups.indexOf(vals[0].item_group)])
+lang_groups = d3.sort(indeces, d => d[1], d => d[2]).map(d => d[0])
 
 // plot height in pixels for each task
 heights = ({
@@ -529,7 +539,7 @@ heights = ({
   "mrot":   150,
   "trog":   690,
   "vocab":  340,
-  "tom":    220,
+  "tom":    500,
 })
 ```
 
@@ -539,31 +549,38 @@ html`<div class="source"><a href="${model.file_link}" target="_blank">Source</a>
 ```
 
 ```{ojs difficulty-plot}
-// item difficulties plot
-Plot.plot({
+item_opts = ({
          style: { fontFamily: "var(--sans-serif)", fontSize: 12, overflow: "visible" },
          width: 700,
         height: heights[task],
-    marginLeft: 110,
+    marginLeft: 120,
      marginTop: 50,
   marginBottom: 40,
           grid: true,
          facet: { label: null, grid: true },
              x: { line: true },
-             r: {range: [1, 4] },
-         color: { legend: false, scheme: "viridis" },
-         marks: [
-          Plot.dot(task_items, Plot.dodgeY("middle", {
-            x: "difficulty",
-            fy: by_lang ? "language" : "item_group",
-            fill: by_lang ? "language" : "item_group",
-            r: "n_responses",
-            sort: {fy: "x", color: "x", reduce: "median"},
-            tip: { format: { fy: false }, anchor: "left" },
-            channels: item_channels
-            //channels: {...item_channels, "difficulty": "difficulty"}
-          })),
-        ]
+             r: { range: [1, 4] },
+            fy: { domain: by_lang ? lang_groups : groups },
+         color: { domain: groups.length > 1 ? groups : langs, legend: false, scheme: "viridis" },
+})
+
+item_dots = (x_var) => {
+  return Plot.marks(
+    Plot.dot(task_items, Plot.dodgeY("middle", {
+    x: x_var,
+    fy: by_lang ? "lang_group" : "item_group",
+    fill: groups.length > 1 ? "item_group" : "language",
+    r: "n_responses",
+    tip: { format: { fy: false }, anchor: "left" },
+    channels: item_channels
+    }))
+  )
+}
+
+// item difficulties plot
+Plot.plot({
+  ...item_opts,
+  marks: item_dots("difficulty")
 })
 ```
 
@@ -571,29 +588,8 @@ Plot.plot({
 // item discriminations plot -- hide if model isn't 2PL
 model.itemtype !== "2PL" ? html`<div></div>` :
 Plot.plot({
-        style: { fontFamily: "var(--sans-serif)", fontSize: 12, overflow: "visible" },
-        width: 700,
-       height: heights[task],
-   marginLeft: 110,
-    marginTop: 50,
- marginBottom: 40,
-         grid: true,
-        facet: { label: null, grid: true },
-            x: { line: true },
-            r: {range: [1, 4] },
-        color: { legend: false, scheme: "viridis" },
-        marks: [
-          Plot.dot(task_items, Plot.dodgeY("middle", {
-            x: "discrimination",
-            fy: by_lang ? "language" : "item_group",
-            fill: by_lang ? "language" : "item_group",
-            r: "n_responses",
-            sort: {fy: "difficulty", color: "difficulty", reduce: "median"},
-            tip: { format: { fy: false }, anchor: "left" },
-            channels: item_channels
-            //channels: {...item_channels, "discrimination": "discrimination"}
-          })),
-        ]
+  ...item_opts,
+  marks: item_dots("discrimination")
 })
 ```
 
