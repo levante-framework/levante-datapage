@@ -13,7 +13,50 @@ description: ""
 
 ```{ojs prelims}
 Plot = import("https://esm.sh/@observablehq/plot@0.6.17")
-scores = transpose(data)
+initial_scores = transpose(data)
+//mutable scores = initial_scores
+```
+
+```{ojs}
+tag_vars = ["site", "dataset", "task_label", "language", "adaptive", "score_type", "scoring_model"]
+var_opts = (df, v) => ([v, [...new Set(df.map(d => d[v]))]])
+get_tags = (df, tags) => Object.fromEntries(tags.map(v => var_opts(df, v)))
+tags = get_tags(scores, tag_vars)
+```
+
+```{ojs}
+task_info = ({
+    "hf": "Hearts & Flowers",
+   "sds": "Same & Different",
+    "mg": "Memory",
+  "math": "Math",
+"matrix": "Pattern Matching",
+  "mrot": "Shape Rotation",
+  "trog": "Sentence Understanding",
+ "vocab": "Vocabulary",
+   "tom": "Stories",
+    "pa": "Language Sounds",
+   "sre": "Sentence Reading",
+   "swr": "Word Reading",
+})
+
+prep_scores = sc => {
+  return sc.map(obj => {
+    return tag_vars.reduce((acc, key) => ({
+      ...acc,
+      [key]: acc[key] === undefined || acc[key] === null ? "NA" : acc[key]
+    }), {
+      ...obj,
+      adaptive: obj.adaptive ? "adaptive" : "non-adaptive",
+      task_label: task_info[obj.task_code]
+    })
+  }).sort((a, b) => {
+    const keysOrder = Object.keys(task_info);
+    return keysOrder.indexOf(a.task_code) - keysOrder.indexOf(b.task_code);
+  })
+}
+
+mutable scores = prep_scores(initial_scores)
 ```
 
 ```{ojs info}
@@ -21,14 +64,12 @@ scores = transpose(data)
 // tip = include in tooltip? range = slider extent (if applicable)
 // note: filter property not actually used programmatically
 vi = ({
-  "age":           { label: "Age (years)",      filter: true,  tip: true,  range: [5, 12] },
+  "age":           { label: "Age (years)",      filter: true,  tip: true,  range: [4, 12] },
   "age_gap":       { label: "Age gap (months)", filter: true,  tip: false, range: [0, 24] },
   "score":         { label: "Score",            filter: false, tip: true,  range: null    },
   "score_se":      { label: "Score SE",         filter: false, tip: true,  range: null    },
   "num_attempted": { label: "num_attempted",    filter: false, tip: true,  range: null    }
 })
-
-//d3.max(line_summary.map(d => d.age_gap))
 
 // info for categorical variables
 // color = include in color dropdown?, tip = include in tooltip?
@@ -59,9 +100,6 @@ var_interval = (v) => {
     step: 1, label: vi[v].label, format: interval_format, width: "95%", color: "#f7ca69"
   })
 }
-
-// checkbox input for a given categorical variable
-cat_checkbox = (t) => Inputs.checkbox(tags[t], {value: tags[t]})
 ```
 
 :::::: {.column-screen-inset}
@@ -81,6 +119,8 @@ cat_checkbox = (t) => Inputs.checkbox(tags[t], {value: tags[t]})
 ::: {.filters-container}
 
 ```{ojs filter-age}
+// checkbox input for a given categorical variable
+cat_checkbox = (tags, t) => Inputs.checkbox(tags[t], {value: tags[t]})
 viewof age_range = var_interval("age")
 ```
 
@@ -92,7 +132,7 @@ viewof age_gap_range = var_interval("age_gap")
 ## {{< bi geo class=header-icon >}}Site
 
 ```{ojs filter-site}
-viewof site_vals = cat_checkbox("site")
+viewof site_vals = cat_checkbox(tags, "site")
 ```
 :::
 
@@ -100,7 +140,7 @@ viewof site_vals = cat_checkbox("site")
 ## {{< bi archive class=header-icon >}}Dataset
 
 ```{ojs filter-dataset}
-viewof dataset_vals = cat_checkbox("dataset")
+viewof dataset_vals = cat_checkbox(tags, "dataset")
 ```
 :::
 
@@ -108,7 +148,7 @@ viewof dataset_vals = cat_checkbox("dataset")
 ## {{< bi ui-checks-grid class=header-icon >}}Task
 
 ```{ojs filter-task_label}
-viewof task_label_vals = cat_checkbox("task_label")
+viewof task_label_vals = cat_checkbox(tags, "task_label")
 ```
 :::
 
@@ -116,7 +156,7 @@ viewof task_label_vals = cat_checkbox("task_label")
 ## {{< bi translate class=header-icon >}}Language
 
 ```{ojs filter-language}
-viewof language_vals = cat_checkbox("language")
+viewof language_vals = cat_checkbox(tags, "language")
 ```
 :::
 
@@ -124,7 +164,7 @@ viewof language_vals = cat_checkbox("language")
 ## {{< bi speedometer class=header-icon >}}Adaptive
 
 ```{ojs filter-adaptive}
-viewof adaptive_vals = cat_checkbox("adaptive")
+viewof adaptive_vals = cat_checkbox(tags, "adaptive")
 ```
 :::
 
@@ -132,7 +172,7 @@ viewof adaptive_vals = cat_checkbox("adaptive")
 ## {{< bi clipboard-data class=header-icon >}}Score type
 
 ```{ojs filter-score_type}
-viewof score_type_vals = cat_checkbox("score_type")
+viewof score_type_vals = cat_checkbox(tags, "score_type")
 ```
 :::
 
@@ -140,9 +180,50 @@ viewof score_type_vals = cat_checkbox("score_type")
 ## {{< bi sliders class=header-icon >}}Scoring model
 
 ```{ojs filter-scoring_model}
-viewof scoring_model_vals = cat_checkbox("scoring_model")
+viewof scoring_model_vals = cat_checkbox(tags, "scoring_model")
 ```
 :::
+
+:::
+:::
+
+-----
+
+{{< bi shuffle >}} _Change data source..._
+
+::: {.side-inputs}
+
+::: {.info-text}
+_Note: To change data sources, you need a [Redivis](https://redivis.com) account. Click on the button below to log into your Redivis account and list the datasets that you have access to._
+:::
+
+
+::: {.filters-container}
+
+```{ojs populate-datasource}
+// populates datasource selector -- first click should open redivis auth pop up
+viewof auth_button = Inputs.button("Populate data sources", {
+  reduce: async () => {
+    const ds = await getDatasets()
+    mutable dn = allowedDatasetNames(ds)
+  }
+})
+```
+
+```{ojs select-datasource}
+mutable dn = [] // available datasource names
+viewof datasource = Inputs.select(dn) // datasource selector
+```
+
+```{ojs switch-datasource}
+// replaces current scores with scores from selected datasource
+viewof switch_datasource_button = Inputs.button("Switch data source", {
+  reduce: async () => {
+    const ds_scores = await getScores(datasource);
+    mutable scores = prep_scores(ds_scores);
+  }
+})
+```
 
 :::
 :::
@@ -154,7 +235,7 @@ viewof scoring_model_vals = cat_checkbox("scoring_model")
 ```{ojs data-filtered}
 // generate range filter function for a given numeric variable and input range
 range_filter = (v, v_range) => {
-  return (d) => d[v] >= v_range[0] & d[v] <= v_range[1]
+  return (d) => d[v] === undefined || (d[v] >= v_range[0] & d[v] <= v_range[1])
 }
 
 // generate overlap filter function for a given categorical variable and input values
@@ -171,17 +252,25 @@ overlap_null_filter = (t, t_vals) => {
 range_inputs = ([
   { v: "age", vals: age_range },
 ])
-
+  
 // specify overlap-based inputs (as variable, values)
 overlap_inputs = ([
-  { v: "site",          vals: site_vals          },
-  { v: "dataset",       vals: dataset_vals       },
-  { v: "task_label",    vals: task_label_vals    },
-  { v: "language",      vals: language_vals      },
-  { v: "adaptive",      vals: adaptive_vals      },
-  { v: "score_type",    vals: score_type_vals    },
-  { v: "scoring_model", vals: scoring_model_vals },
+    { v: "site",          vals: site_vals          },
+    { v: "dataset",       vals: dataset_vals       },
+    { v: "task_label",    vals: task_label_vals    },
+    { v: "language",      vals: language_vals      },
+    { v: "adaptive",      vals: adaptive_vals      },
+    { v: "score_type",    vals: score_type_vals    },
+    { v: "scoring_model", vals: scoring_model_vals },
 ])
+
+//apply_filters = (df, ri, oi) => {
+//  const overlap_filters = oi.map(({ v, vals }) => overlap_filter(v, vals))
+//  const range_filters = ri.map(({ v, vals }) => range_filter(v, vals))
+//  const all_filters = [...range_filters, ...overlap_filters]
+//  return all_filters.reduce((d, fun) => d.filter(fun), df)
+//}
+//sf = apply_filters(scores, range_inputs, overlap_inputs)
 
 // generate filter function for each input and combine them
 range_filters = range_inputs.map(({ v, vals }) => range_filter(v, vals))
@@ -192,7 +281,7 @@ all_filters = [...range_filters, ...overlap_filters]
 sf = all_filters.reduce((sc, fun) => sc.filter(fun), scores)
 
 // apply age gap filter
-ag = ls.filter(d => d.age_gap === null || (d.age_gap >= age_gap_range[0] & d.age_gap <= age_gap_range[1]))
+ag = ls.filter(d => d.age_gap === NaN || (d.age_gap >= age_gap_range[0] & d.age_gap <= age_gap_range[1]))
 ag_runs = ag.map(d => d.runs).flat()
 scoresf = sf.filter(d => ag_runs.includes(d.run_id))
 ```
@@ -324,8 +413,10 @@ ls = Array.from(
     })
   )
 ).flat()
-line_summary = ls.filter(d => d.n_scores > 1)
 
+// filter line segment summary to users with more than one score
+line_summary = ls.filter(d => d.n_scores > 1)
+// filter scores to runs filtered line summary
 long_runs = line_summary.map(d => d.runs).flat()
 scoresl = scoresf.filter(d => long_runs.includes(d.run_id))
 
@@ -377,14 +468,17 @@ line_summary_facet = facet_wrap(line_summary, f_var, 6) // facetting for line su
 marks = ({ dot: dot_marks, line: line_marks })
 
 // values for x axis ticks -- age range with step size 1
-ages = d3.range(age_range[0], age_range[1] + 1, 1)
+//ages = d3.range(age_range[0], age_range[1] + 1, 1)
+span = (x) => [Math.floor(d3.min(x)), Math.ceil(d3.max(x))]
+age_span = span(scoresf.map(d => d.age))
+ages = d3.range(age_span[0], age_span[1] + 1, 1)
 
 // plot scores!
 scorePlot = Plot.plot({
   style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
   width: 1000,
    grid: true,
-      x: { line: true, ticks: ages, tickFormat: d3.format(".0f") },
+      x: { line: true, domain: age_span, ticks: ages, tickFormat: d3.format(".0f") },
       y: { line: true },
       r: { transform: (s) => s ? 1/s : 1, range: [0, 4] }, // radius inversely proportional
   color: {
@@ -393,8 +487,8 @@ scorePlot = Plot.plot({
     legend: color_var !== null,
     className: "color-legend"
   },
-  facet: { axis: null },
-  marks: marks[plot_type]
+  facet: { axis: null }, // hide facet labels
+  marks: marks[plot_type] // use marks according to plot type (dot/line)
 })
 ```
 
@@ -408,20 +502,24 @@ scorePlot = Plot.plot({
 ## Items
 
 ```{ojs items}
+// defined in _load-data-items.qmd
 items = transpose(items_)
 models = transpose(models_)
 
+// group items by test, use for task selector
 tasks = d3.group(items, d => d.task_label)
 viewof task_items = Inputs.select(tasks, { label: "Task", value: tasks.get("Math") })
 item_groups = new Set(task_items.map(d => d.item_group))
 
+// channels for item tooltips
 item_vars = ["item_group", "item_entry", "item_uid", "difficulty", "n_responses"]
 item_channels = Object.fromEntries(item_vars.map(k => [k, k]))
 
-task = task_items[0].task_code
-model = models.filter(t => t.task_code === task)[0]
-by_lang = model.language !== undefined
+task = task_items[0].task_code // current items' task code
+model = models.filter(t => t.task_code === task)[0] // current items' model type
+by_lang = model.language !== undefined // whether items' model is by language
 
+// plot height in pixels for each task
 heights = ({
   "hf":     140,
   "sds":    200,
@@ -436,58 +534,96 @@ heights = ({
 ```
 
 ```{ojs model-info}
+// info on items' model registry record
 html`<div class="source"><a href="${model.file_link}" target="_blank">Source</a>: ${model.itemtype} IRT model (${model.invariance_label}) fit to ${model.n_runs} runs, uploaded on ${model.added_at_date} to model registry version ${model.registry_version}.</div>`
 ```
 
 ```{ojs difficulty-plot}
+// item difficulties plot
 Plot.plot({
-  style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
-  width: 700,
- height: heights[task],
- marginLeft: 110,
-   grid: true,
-  facet: { label: null, grid: true },
-  x: { line: true },
-  color: { legend: false, scheme: "viridis" },
-  r: {range: [1, 4] },
-  marks: [
-    Plot.dot(task_items, Plot.dodgeY("middle", {
-      x: "difficulty",
-      fy: by_lang ? "language" : "item_group",
-      fill: by_lang ? "language" : "item_group",
-      r: "n_responses",
-      sort: {fy: "x", color: "x", reduce: "median"},
-      tip: { format: { fy: false }},
-      channels: item_channels,
-    })),
-  ]
+       style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
+       width: 700,
+      height: heights[task],
+  marginLeft: 110,
+        grid: true,
+       facet: { label: null, grid: true },
+           x: { line: true },
+           r: {range: [1, 4] },
+       color: { legend: false, scheme: "viridis" },
+       marks: [
+        Plot.dot(task_items, Plot.dodgeY("middle", {
+          x: "difficulty",
+          fy: by_lang ? "language" : "item_group",
+          fill: by_lang ? "language" : "item_group",
+          r: "n_responses",
+          sort: {fy: "x", color: "x", reduce: "median"},
+          tip: { format: { fy: false }},
+          channels: item_channels,
+        })),
+      ]
 })
 ```
 
 ```{ojs discrimination-plot}
-model.itemtype === "2PL" ? Plot.plot({
-  style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
-  width: 700,
- height: heights[task],
+// item discriminations plot -- hide if model isn't 2PL
+model.itemtype !== "2PL" ? html`<div></div>` :
+Plot.plot({
+      style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
+      width: 700,
+     height: heights[task],
  marginLeft: 110,
-   grid: true,
-  facet: { label: null, grid: true },
-  x: { line: true },
-  color: { legend: false, scheme: "viridis" },
-  r: {range: [1, 4] },
-  marks: [
-    Plot.dot(task_items, Plot.dodgeY("middle", {
-      x: "discrimination",
-      fy: by_lang ? "language" : "item_group",
-      fill: by_lang ? "language" : "item_group",
-      r: "n_responses",
-      sort: {fy: "difficulty", color: "difficulty", reduce: "median"},
-      tip: { format: { fy: false }},
-      channels: item_channels,
-    })),
-  ]
-}) : html`<div></div>`
+       grid: true,
+      facet: { label: null, grid: true },
+          x: { line: true },
+          r: {range: [1, 4] },
+      color: { legend: false, scheme: "viridis" },
+      marks: [
+        Plot.dot(task_items, Plot.dodgeY("middle", {
+          x: "discrimination",
+          fy: by_lang ? "language" : "item_group",
+          fill: by_lang ? "language" : "item_group",
+          r: "n_responses",
+          sort: {fy: "difficulty", color: "difficulty", reduce: "median"},
+          tip: { format: { fy: false }},
+          channels: item_channels,
+        })),
+      ]
+})
 ```
 
 :::::
 ::::::
+
+```{ojs redivis}
+// load redivis
+redivis = require("redivis")
+
+// get scores table for a given dataset
+async function getScores(dataset) {
+  console.log('getting scores')
+  const rows = await redivis
+    .organization('LEVANTE')
+    .dataset(dataset)
+    .table('scores')
+    .listRows({ max_results: 3 })
+  console.log('got scores')
+  return rows;
+}
+
+// get references to all LEVANTE datasets (with "properties" populated)
+async function getDatasets() {
+  const ds = await redivis
+    .organization('LEVANTE')
+    .listDatasets()
+  return await Promise.all(ds.map(d => d.get()))
+}
+
+// filter datasets by authed user's access + get names of "processed" datasets
+allowedDatasetNames = (ds) => {
+  const accessLevels = ["data", "edit"]
+  return ds.filter(d => accessLevels.includes(d.properties.accessLevel))
+    .map(d => d.name)
+    .filter(n => n.match("processed"))
+    .sort()
+}
+```

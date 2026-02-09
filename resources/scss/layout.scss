@@ -43,6 +43,14 @@ form > label, .label:has(+ .form) {
   height: 100%;
   row-gap: 1em;
   padding-right: 0px;
+  line-height: normal;
+}
+
+.info-text {
+  font-size: smaller;
+  p {
+    margin-bottom: 0;
+  }
 }
 
 .plot-container {

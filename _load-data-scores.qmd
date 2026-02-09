@@ -1,16 +1,14 @@
 ```{r load-scores}
 library(redivis)
-library(dplyr)
-source("info.R")
+library(glue)
 
 quarto <- yaml::read_yaml("_quarto.yml")
-tag_vars <- c("site", "dataset", "task_label", "language", "adaptive", "score_type", "scoring_model")
 
 # load locally cached data
 if ("mode" %in% names(quarto) && quarto$mode == "local") {
-  data <- readr::read_rds("data/table_data.rds")
-  vars <- readr::read_rds("data/table_vars.rds")
-  
+  # data <- readr::read_rds("data/table_data.rds")
+  data <- readr::read_rds(glue("data/{quarto$redivis$dataset}.rds"))
+
   # load data from redivis table if specified in yaml
 } else if ("redivis" %in% names(quarto) &&
            all(c("user", "table") %in% names(quarto$redivis)) && # need user and table
@@ -24,45 +22,16 @@ if ("mode" %in% names(quarto) && quarto$mode == "local") {
   }
   
   table <- dataset$table(quarto$redivis$table)
-  
-  # get table data
-  data <- table$to_tibble() |>
-    mutate(adaptive = if_else(adaptive, "adaptive", "fixed-length")) |>
-    mutate(across(any_of(tag_vars),
-                  \(s) s |> as.character() |> tidyr::replace_na("NA"))) |>
-    group_by(task_id, user_id) |>
-    mutate(longitudinal = n() > 1) |>
-    ungroup() |>
-    left_join(task_info) |>
-    arrange(task_category, task_label)
+  data <- table$to_tibble() #max_results = 1000)
   
   if ("mode" %in% names(quarto) && quarto$mode == "cache") {
-    readr::write_rds(data, "data/table_data.rds")
-  }
-  
-  # get variable metadata
-  vars <- map(table$list_variables(), \(v) c(v$get()$properties, v$get_statistics()))
-  if ("mode" %in% names(quarto) && quarto$mode == "cache") {
-    readr::write_rds(vars, "data/table_vars.rds")
+    readr::write_rds(data, glue("data/{quarto$redivis$dataset}.rds"))
   }
   
 } else {
   data <- NULL
-  vars <- NULL
 }
-
-get_tags <- \(df) {
-  if (is.null(df)) return(NULL)
-  df |>
-    select(!!!tag_vars) |>
-    as.list() |>
-    purrr::map(unique) |>
-    purrr::map(sort)
-}
-tags <- get_tags(data)
 
 # pass to OJS
 ojs_define(data = data)
-ojs_define(vars = vars)
-ojs_define(tags = tags)
 ```

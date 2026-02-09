@@ -18,10 +18,12 @@ execute:
   warning: false
   error: false
 
-mode: local
+# mode: local
+# mode: cache
 redivis:
   user: levante
   dataset: levante-data-pilots-processed
+  # dataset: pilot-western-ca-main-processed
   table: scores
 
 resources:
