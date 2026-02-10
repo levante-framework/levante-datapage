@@ -1,10 +1,22 @@
 project:
   title: "LEVANTE"
-  type: datapage
+  type: website
 
 website:
   navbar:
-    logo: ""
+    title: false
+    search: false
+    background: "none"
+    left:
+      - text: Overview
+        href: index.qmd
+        icon: bar-chart
+      - href: scores.qmd
+        text: Scores
+        icon: graph-up
+      - href: items.qmd
+        text: Items
+        icon: sliders
 
 format:
   datapage-html:
@@ -23,7 +35,6 @@ execute:
 redivis:
   user: levante
   dataset: levante-data-pilots-processed
-  # dataset: pilot-western-ca-main-processed
   table: scores
 
 resources:

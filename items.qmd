@@ -1,0 +1,119 @@
+{{< include _load-data-items.qmd >}}
+
+{{< include components/_tol.qmd >}}
+{{< include components/_style.qmd >}}
+
+```{ojs prelims}
+//| output: false
+
+Plot = import("https://esm.sh/@observablehq/plot@0.6.17")
+
+// defined in _load-data-items.qmd
+items = transpose(items_)
+models = transpose(models_)
+
+// create combined item_group and language
+items_coded = items.map(d => ({...d, lang_group: `${d.item_group} | ${d.language}` }))
+// group items by task for task selector
+tasks = d3.group(items_coded, d => d.task_label)
+```
+
+::: {.column-screen-inset}
+
+```{ojs task}
+viewof task_items = Inputs.select(tasks, { label: "Task", value: tasks.get("Math") })
+```
+
+```{ojs data-prep}
+//| output: false
+
+//item_groups = new Set(task_items.map(d => d.item_group))
+
+// channels for item tooltips
+item_vars = ["item_group", "item_uid", "n_responses", "difficulty"]
+item_channels = Object.fromEntries(item_vars.map(k => [k, k]))
+
+task = task_items[0].task_code // current items' task code
+model = models.filter(t => t.task_code === task)[0] // current items' model type
+by_lang = model.language !== undefined // whether items' model is by language
+
+// sort order of languages -- alpha
+langs = d3.sort(new Set(task_items.map(d => d.language)))
+// sort order of item groups -- median difficulty (in first language)
+l0_items = task_items.filter(d => d.language === langs[0])
+groups = d3.groupSort(l0_items, g => d3.median(g, d => d.difficulty), d => d.item_group)
+// sort order of language + item group -- above combined
+indeces = d3.groups(task_items, d => d.lang_group).map(([lang_group, vals]) => [lang_group, langs.indexOf(vals[0].language), groups.indexOf(vals[0].item_group)])
+lang_groups = d3.sort(indeces, d => d[1], d => d[2]).map(d => d[0])
+```
+
+```{ojs plot-config}
+//| output: false
+
+// plot height in pixels for each task
+heights = ({
+  "hf":     180,
+  "sds":    240,
+  "mg":     220,
+  "math":   490,
+  "matrix": 220,
+  "mrot":   150,
+  "trog":   690,
+  "vocab":  340,
+  "tom":    500,
+})
+
+// shared options for both plots
+item_opts = ({
+         style: { fontFamily: "var(--sans-serif)", fontSize: 12, overflow: "visible" },
+         width: 700,
+        height: heights[task],
+    marginLeft: 120,
+     marginTop: 50,
+  marginBottom: 40,
+          grid: true,
+         facet: { label: null, grid: true },
+             x: { line: true },
+             r: { range: [1, 4] },
+            fy: { domain: by_lang ? lang_groups : groups },
+         color: { domain: groups.length > 1 ? groups : langs, legend: false, scheme: "viridis" },
+})
+
+// dot mark for each plot, depending on x variable
+item_dots = (x_var) => {
+  return Plot.marks(
+    Plot.dot(task_items, Plot.dodgeY("middle", {
+    x: x_var,
+    fy: by_lang ? "lang_group" : "item_group",
+    fill: groups.length > 1 ? "item_group" : "language",
+    r: "n_responses",
+    tip: { format: { fy: false }, anchor: "left" },
+    channels: item_channels
+    }))
+  )
+}
+```
+
+```{ojs model-info}
+// info on items' model registry record
+html`<div class="source"><a href="${model.file_link}" target="_blank">Source</a>: ${model.itemtype} IRT model (${model.invariance_label}) fit to ${model.n_runs} runs, uploaded on ${model.added_at_date} to model registry version ${model.registry_version}.</div>`
+```
+
+```{ojs plot-difficulty}
+// item difficulties plot
+Plot.plot({
+  ...item_opts,
+  marks: item_dots("difficulty")
+})
+```
+
+```{ojs plot-discrimination}
+// item discriminations plot -- hide if model isn't 2PL
+model.itemtype !== "2PL" ? html`<div></div>` :
+Plot.plot({
+  ...item_opts,
+  marks: item_dots("discrimination")
+})
+```
+
+:::

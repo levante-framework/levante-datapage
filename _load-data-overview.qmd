@@ -1,0 +1,24 @@
+```{r load-scores}
+library(redivis)
+library(glue)
+
+quarto <- yaml::read_yaml("_quarto.yml")
+
+# load locally cached data
+if ("mode" %in% names(quarto) && quarto$mode == "local") {
+  overview <- readr::read_rds(glue("data/score_summary.rds"))
+  
+  # load data from redivis table if specified in yaml
+} else {
+  user <- redivis$user("levante")
+  workflow <- user$workflow("processed_data_overview:vvwv")
+  overview <- workflow$table("score_summary:45bb")$to_tibble()
+
+  if ("mode" %in% names(quarto) && quarto$mode == "cache") {
+    readr::write_rds(overview, glue("data/score_summary.rds"))
+  }
+}
+
+# pass to OJS
+ojs_define(overview = overview)
+```
