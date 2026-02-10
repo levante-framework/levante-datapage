@@ -20,5 +20,5 @@ if ("mode" %in% names(quarto) && quarto$mode == "local") {
 }
 
 # pass to OJS
-ojs_define(overview = overview)
+ojs_define(overview_ = overview)
 ```

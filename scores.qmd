@@ -20,6 +20,7 @@ tags = get_tags(scores, tag_vars)
 
 ```{ojs}
 //| output: false
+
 task_info = ({
     "hf": "Hearts & Flowers",
    "sds": "Same & Different",
@@ -35,7 +36,7 @@ task_info = ({
    "swr": "Word Reading",
 })
 
-prep_scores = sc => {
+prep_scores = (sc) => {
   return sc.map(obj => {
     return tag_vars.reduce((acc, key) => ({
       ...acc,
@@ -347,6 +348,8 @@ facet_wrap = (df, col, ncol) => {
 ```
 
 ```{ojs score-plot-dots}
+//| output: false
+
 // channels for dot tooltips
 all_vars = [...Object.entries(ti), ...Object.entries(vi)] // all variables
 tip_vars = all_vars.filter(([k, v]) => v.tip) // variables with "tip" property
@@ -388,6 +391,8 @@ dot_marks = Plot.marks(
 ```
 
 ```{ojs score-plot-lines}
+//| output: false
+
 // summary per line segment for tooltips
 ls = Array.from(
   d3.group(sf, d => d[f_var], d => d[z_var]),

@@ -1,13 +1,35 @@
 {{< include _load-data-overview.qmd >}}
+{{< include components/_style.qmd >}}
+{{< include components/_tol.qmd >}}
 
-```{ojs}
-ov = transpose(overview)
+```{ojs prelims}
+//| output: false
+
+Plot = import("https://esm.sh/@observablehq/plot@0.6.17")
+overview = transpose(overview_)
+
+task_info = ({
+    "hf": "Hearts & Flowers",
+   "sds": "Same & Different",
+    "mg": "Memory",
+  "math": "Math",
+"matrix": "Pattern Matching",
+  "mrot": "Shape Rotation",
+  "trog": "Sentence Understanding",
+ "vocab": "Vocabulary",
+   "tom": "Stories",
+    "pa": "Language Sounds",
+   "sre": "Sentence Reading",
+   "swr": "Word Reading",
+})
+
+ov = overview.map(obj => ({...obj, task_label: task_info[obj.task_code]}))
 ```
 
 :::: {.column-screen-inset}
 
-```{ojs}
-scheme = [
+```{ojs diplay-vals}
+displayScheme = [
   [204, 102, 119],
   [221, 204, 119],
   [153, 153,  51],
@@ -27,7 +49,7 @@ displayConfig = ([
 
 displayBox = ({ index, property, label, icon }) => {
   const values = new Set(ov.map(d => d[property]))
-  const color = scheme[index]
+  const color = displayScheme[index]
   const color_str = `${color[0]}, ${color[1]}, ${color[2]}`
   const borderColor = `rgb(${color_str})`
   const backgroundColor = `rgba(${color_str}, 0.4)`
@@ -49,5 +71,67 @@ displayBox = ({ index, property, label, icon }) => {
 boxes = displayConfig.map(displayBox)
 html`<div class="display-box-container">${boxes}</div>`
 ```
+
+::: {.plot-container}
+::: {.plot-inputs}
+
+```{ojs}
+x_var_opts = new Map([["Assessments", "run_id_hash"], ["Participants", "user_id_hash"]])
+viewof x_var = Inputs.select(x_var_opts, { label: "Count of" })
+```
+
+```{ojs}
+y_var_opts = new Map([["Site", "site"], ["Dataset", "dataset"], ["Language", "language"], ["Task", "task_label"]])
+viewof y_var = Inputs.select(y_var_opts, { label: "For each", value: "task_label" })
+```
+
+```{ojs}
+color_opts = new Map([["", null], ["Site", "site"], ["Dataset", "dataset"], ["Language", "language"], ["Task", "task_label"]])
+viewof color_var = Inputs.select(color_opts, { label: "Grouped by", value: "site" })
+```
+
+:::
+
+```{ojs}
+scheme = tol.QualMuted // color scheme
+default_color = scheme[1] // default color when there's no color variable
+plt_color = color_var || default_color // plot color variable
+
+x_lab = x_var_opts.entries().filter(([k, v]) => v === x_var)
+y_lab = y_var_opts.entries().filter(([k, v]) => v === y_var)
+
+groups = d3.groupSort(ov, g => -new Set(g.map(d => d[x_var])).size, d => d[color_var])
+
+marginLeft = 170
+Plot.plot({
+  style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
+  width: 1000,
+  marginLeft: marginLeft,
+  marginTop: 0,
+  marginBottom: 40,
+      //x: { grid: true },
+  x: { label: `${x_lab[0]} count`, axis: "bottom", line: true },
+  y: { label: y_lab[0], tickSize: 0, tickPadding: 2 },
+  color: {
+    domain: groups,
+    range: scheme,
+    legend: color_var !== null,
+    marginLeft: marginLeft,
+    className: "color-legend"
+  },
+  marks: [
+    Plot.barX(ov, Plot.groupY(
+      { x: g => new Set(g.map(d => d[x_var])).size },
+      { y: y_var, fill: plt_color, sort: { y: "x", reverse: true, }, inset: 1 }
+    )),
+    Plot.textX(ov, Plot.stackX(Plot.groupY(
+      { x: g => new Set(g.map(d => d[x_var])).size, text: g => new Set(g.map(d => d[x_var])).size },
+      { y: y_var, z: plt_color, fill: "white" }
+    ))),
+  ]
+})
+```
+
+:::
 
 ::::
