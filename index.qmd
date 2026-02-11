@@ -72,6 +72,7 @@ boxes = displayConfig.map(displayBox)
 html`<div class="display-box-container">${boxes}</div>`
 ```
 
+:::: {layout="[ [1,1] ]"}
 ::: {.plot-container}
 ::: {.plot-inputs}
 
@@ -87,7 +88,7 @@ viewof y_var = Inputs.select(y_var_opts, { label: "For each", value: "task_label
 
 ```{ojs}
 color_opts = new Map([["", null], ["Site", "site"], ["Dataset", "dataset"], ["Language", "language"], ["Task", "task_label"]])
-viewof color_var = Inputs.select(color_opts, { label: "Grouped by", value: "site" })
+viewof color_var = Inputs.select(color_opts, { label: "Grouped by", value: "language" })
 ```
 
 :::
@@ -100,20 +101,20 @@ plt_color = color_var || default_color // plot color variable
 x_lab = x_var_opts.entries().filter(([k, v]) => v === x_var)
 y_lab = y_var_opts.entries().filter(([k, v]) => v === y_var)
 
-groups = d3.groupSort(ov, g => -new Set(g.map(d => d[x_var])).size, d => d[color_var])
+//groups = d3.groupSort(ov, g => -new Set(g.map(d => d[x_var])).size, d => d[color_var])
 
-marginLeft = 170
+marginLeft = 160
 Plot.plot({
   style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
-  width: 1000,
+  width: 0.5 * width,
   marginLeft: marginLeft,
-  marginTop: 0,
+  marginTop: 10,
   marginBottom: 40,
       //x: { grid: true },
   x: { label: `${x_lab[0]} count`, axis: "bottom", line: true },
-  y: { label: y_lab[0], tickSize: 0, tickPadding: 2 },
+  y: { label: y_lab[0], labelAnchor: "top", tickSize: 0, tickPadding: 2 },
   color: {
-    domain: groups,
+    //domain: groups,
     range: scheme,
     legend: color_var !== null,
     marginLeft: marginLeft,
@@ -134,4 +135,61 @@ Plot.plot({
 
 :::
 
+::: {.plot-container}
+
+::: {.plot-inputs}
+
+```{ojs}
+hist_var_opts = new Map([["Age (years)", "age"]])
+viewof hist_var = Inputs.select(hist_var_opts, { label: "Count of" })
+
+//hist_bin_opts = new Map([["Age (years)", "age"]])
+//hist_bin_opts = d3.range(1, 24, 1) // months
+//viewof hist_bin = Inputs.select(hist_bin_opts, { label: "Binned to" })
+```
+
+```{ojs}
+stack_var_opts = new Map([["", null], ["Site", "site"], ["Dataset", "dataset"], ["Language", "language"], ["Task", "task_label"]])
+viewof stack_var = Inputs.select(stack_var_opts, { label: "Grouped by", value: "language" })
+```
+
+:::
+
+```{ojs}
+hist_x_lab = hist_var_opts.entries().filter(([k, v]) => v === hist_var)
+
+Plot.plot({
+  style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
+  //width: 1000,
+  width: 0.5 * width,
+  height: 300,
+  marginTop: 10,
+  marginBottom: 40,
+  x: {
+    //domain: [3,12],
+    label: hist_x_lab[0],
+    line: true
+  },
+  color: {
+    legend: true,
+    label: "bem",
+    //domain: groups,
+    range: scheme,
+    //legend: stack_var !== null,
+    //marginLeft: marginLeft,
+    className: "color-legend"
+  },
+  marks: [
+    Plot.rectY(ov, Plot.binX({y: "count"}, {
+      fill: stack_var || default_color,
+      x: {
+        //interval: hist_bin / 12,
+        value: hist_var
+      }
+    })),
+  ]
+})
+```
+
+::::
 ::::
