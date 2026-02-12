@@ -18,15 +18,11 @@ $primary: #f7ca69;
   unicode-range: U+2212;
 }
 
-body {
-  overflow: hidden; /* Disables all scrolling and hides both scrollbars */
-}
+//body { overflow: hidden; }
 
-/*
 .observablehq--error {
   display: none;
 }
-*/
 
 :where(.color-legend-swatches) {
   font-family: var(--sans-serif) !important;

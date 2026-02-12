@@ -6,6 +6,8 @@
 //| output: false
 
 Plot = import("https://esm.sh/@observablehq/plot@0.6.17")
+import {yamultiselect} from '@saneef/yet-another-multi-select'
+
 overview = transpose(overview_)
 
 task_info = ({
@@ -23,7 +25,8 @@ task_info = ({
    "swr": "Word Reading",
 })
 
-ov = overview.map(obj => ({...obj, task_label: task_info[obj.task_code]}))
+mutable dn = [{ name: "levante-data-pilots", ref: "48qk" }] // default datasource
+ov = overview.map(obj => ({...obj, task_label: task_info[obj.task_code]})).filter(d => ds.includes(d.ref))
 ```
 
 :::: {.column-screen-inset}
@@ -191,5 +194,64 @@ Plot.plot({
 })
 ```
 
+:::
 ::::
+
+:::: {layout="[ [1,1] ]"}
+::: {.panel-input}
+
+{{< bi shuffle >}} _Change data source..._
+
+::: {.side-inputs}
+
+::: {.info-text}
+_Note: To change data sources, you need a [Redivis](https://redivis.com) account. Click on the button below to log into your Redivis account and list the data sources that you have access to._
+:::
+
+::: {.filters-container}
+
+```{ojs populate-datasource}
+// populates datasource selector -- first click should open redivis auth pop up
+viewof auth_button = Inputs.button("Populate data sources", {
+  reduce: async () => {
+    const ds = await getDatasets()
+    mutable dn = allowedDatasetNames(ds)
+  }
+})
+```
+
+```{ojs select-datasource}
+dnf = dn.filter(d => overview.map(v => v.ref).includes(d.ref))
+viewof ds = yamultiselect(new Map(dnf.map(d => [d.name, d.ref])), { value: dnf.map(d => d.ref), placeholder: "Select...", width: "100%" })
+```
+
+:::
+:::
+:::
 ::::
+
+::::
+
+```{ojs redivis}
+//| output: false
+
+// load redivis
+redivis = require("redivis")
+
+// get references to all LEVANTE datasets (with "properties" populated)
+async function getDatasets() {
+  const ds = await redivis
+    .organization('LEVANTE')
+    .listDatasets()
+  return await Promise.all(ds.map(d => d.get()))
+}
+
+// filter datasets by authed user's access, extract their reference IDs
+allowedDatasetNames = (ds) => {
+  const accessLevels = ["data", "edit"]
+  return ds.filter(d => accessLevels.includes(d.properties.accessLevel))
+    .map(d => ({ name: d.properties.name, ref: d.properties.referenceId }))
+    .sort((a, b) => d3.ascending(a.name, b.name))
+    .filter(d => d.name !== "levante-data-pilots-raw") // TODO: fix name inconsistencies
+}
+```

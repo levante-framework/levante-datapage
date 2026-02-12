@@ -12,7 +12,9 @@ if ("mode" %in% names(quarto) && quarto$mode == "local") {
 } else {
   user <- redivis$user("levante")
   workflow <- user$workflow("processed_data_overview:vvwv")
-  overview <- workflow$table("score_summary:45bb")$to_tibble()
+  overview <- workflow$table("score_summary:45bb")$to_tibble() |>
+    tidyr::separate_wider_delim(redivis_source, delim = ":",
+                                names = c("name", "ref", "version"))
 
   if ("mode" %in% names(quarto) && quarto$mode == "cache") {
     readr::write_rds(overview, glue("data/score_summary.rds"))
