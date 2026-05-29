@@ -7,7 +7,7 @@ library(purrr)
 library(stringr)
 source("info.R")
 
-param_table <- airtable(table = "parameters", base = "appe2p0S3xk4DL2qc")
+param_table <- airtable(table = "registry_parameter", base = "appe2p0S3xk4DL2qc")
 params <- read_airtable(param_table) |>
   as_tibble() |>
   mutate(across(where(is.list), as.character)) |>
