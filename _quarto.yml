@@ -34,7 +34,7 @@ execute:
 # mode: cache
 redivis:
   user: levante
-  dataset: levante-data-pilots-processed
+  dataset: levante-data-pilots
   table: scores
 
 resources:
