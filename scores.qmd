@@ -46,7 +46,9 @@ prep_scores = (sc) => {
       adaptive: obj.adaptive ? "adaptive" : "non-adaptive",
       task_label: task_info[obj.task_code]
     })
-  }).sort((a, b) => {
+  })
+    .filter(d => d.task_label !== "NA")
+    .sort((a, b) => {
     const keysOrder = Object.keys(task_info);
     return keysOrder.indexOf(a.task_code) - keysOrder.indexOf(b.task_code);
   })
@@ -235,7 +237,7 @@ range_filter = (v, v_range) => {
 
 // generate overlap filter function for a given categorical variable and input values
 overlap_filter = (t, t_vals) => {
-  return (d) => t_vals.some(v => d[t].includes(v))
+  return (d) => t_vals.some(v => d[t] === v)
 }
 
 // generate overlap filter function as above but that defaults to including everything if input values empty
@@ -515,7 +517,7 @@ async function getScores(dataset) {
     .organization('LEVANTE')
     .dataset(dataset)
     .table('scores')
-    .listRows({ max_results: 3 })
+    .listRows()
   console.log('got scores')
   return rows;
 }
