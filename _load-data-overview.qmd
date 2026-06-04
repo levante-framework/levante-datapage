@@ -14,7 +14,9 @@ if ("mode" %in% names(quarto) && quarto$mode == "local") {
   workflow <- user$workflow("processed_data_overview:vvwv")
   overview <- workflow$table("score_summary:45bb")$to_tibble() |>
     tidyr::separate_wider_delim(redivis_source, delim = ":",
-                                names = c("name", "ref", "version"))
+                                names = c("name", "ref", "version")) |>
+    dplyr::mutate(site = site |> stringr::str_replace_all("_", "-"),
+                  dataset = dataset |> stringr::str_replace_all("_", "-"))
 
   if ("mode" %in% names(quarto) && quarto$mode == "cache") {
     readr::write_rds(overview, glue("data/score_summary.rds"))

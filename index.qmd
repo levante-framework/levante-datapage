@@ -29,6 +29,7 @@ mutable dn = [{ name: "levante-data-pilots", ref: "48qk" }] // default datasourc
 ov = overview.map(obj => ({...obj, task_label: task_info[obj.task_code]})).filter(d => ds.includes(d.ref))
 ```
 
+
 :::: {.column-screen-inset}
 
 ```{ojs diplay-vals}
@@ -42,8 +43,8 @@ displayScheme = [
 ]
 
 displayConfig = ([
-  { index: 0, property: "site",         label: "Sites",        icon: "globe"          },
-  { index: 1, property: "dataset",      label: "Datasets",     icon: "archive"        },
+  { index: 0, property: "dataset",      label: "Datasets",     icon: "archive"        },
+  { index: 1, property: "site",         label: "Teams",        icon: "geo"            },
   { index: 2, property: "language",     label: "Languages",    icon: "translate"      },
   { index: 3, property: "task_code",    label: "Tasks",        icon: "ui-checks-grid" },
   { index: 4, property: "user_id_hash", label: "Participants", icon: "person-arms-up" },
@@ -85,12 +86,12 @@ viewof x_var = Inputs.select(x_var_opts, { label: "Count of" })
 ```
 
 ```{ojs}
-y_var_opts = new Map([["Site", "site"], ["Dataset", "dataset"], ["Language", "language"], ["Task", "task_label"]])
+y_var_opts = new Map([["Team", "site"], ["Dataset", "dataset"], ["Language", "language"], ["Task", "task_label"]])
 viewof y_var = Inputs.select(y_var_opts, { label: "For each", value: "task_label" })
 ```
 
 ```{ojs}
-color_opts = new Map([["", null], ["Site", "site"], ["Dataset", "dataset"], ["Language", "language"], ["Task", "task_label"]])
+color_opts = new Map([["", null], ["Team", "site"], ["Dataset", "dataset"], ["Language", "language"], ["Task", "task_label"]])
 viewof color_var = Inputs.select(color_opts, { label: "Grouped by", value: "language" })
 ```
 
@@ -152,7 +153,7 @@ viewof hist_var = Inputs.select(hist_var_opts, { label: "Count of" })
 ```
 
 ```{ojs}
-stack_var_opts = new Map([["", null], ["Site", "site"], ["Dataset", "dataset"], ["Language", "language"], ["Task", "task_label"]])
+stack_var_opts = new Map([["", null], ["Team", "site"], ["Dataset", "dataset"], ["Language", "language"], ["Task", "task_label"]])
 viewof stack_var = Inputs.select(stack_var_opts, { label: "Grouped by", value: "language" })
 ```
 

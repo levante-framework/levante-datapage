@@ -12,7 +12,7 @@ initial_scores = transpose(data)
 
 ```{ojs}
 //| output: false
-tag_vars = ["site", "dataset", "task_label", "language", "adaptive", "score_type", "scoring_model"]
+tag_vars = ["dataset", "site", "task_label", "language", "adaptive", "score_type", "scoring_model"]
 var_opts = (df, v) => ([v, [...new Set(df.map(d => d[v]))]])
 get_tags = (df, tags) => Object.fromEntries(tags.map(v => var_opts(df, v)))
 tags = get_tags(scores, tag_vars)
@@ -44,7 +44,9 @@ prep_scores = (sc) => {
     }), {
       ...obj,
       adaptive: obj.adaptive ? "adaptive" : "non-adaptive",
-      task_label: task_info[obj.task_code]
+      task_label: task_info[obj.task_code],
+      site: obj.site.replaceAll("_", "-"),
+      dataset: obj.dataset.replaceAll("_", "-")
     })
   })
     .filter(d => d.task_label !== "NA")
@@ -74,8 +76,8 @@ vi = ({
 // color = include in color dropdown?, tip = include in tooltip?
 // note: filter property not actually used programmatically
 ti = ({
-  "site":          { label: "Site",          filter: true,  color: true,  tip: true  },
   "dataset":       { label: "Dataset",       filter: true,  color: true,  tip: true  },
+  "site":          { label: "Team",          filter: true,  color: true,  tip: true  },
   "task_label":    { label: "Task",          filter: true,  color: false, tip: false },
   "language":      { label: "Language",      filter: true,  color: true,  tip: false },
   "adaptive":      { label: "Adaptive",      filter: true,  color: true,  tip: false },
@@ -125,18 +127,18 @@ viewof age_gap_range = var_interval("age_gap")
 ```
 
 ::: {.callout-note collapse="true"}
-## {{< bi geo class=header-icon >}}Site
-
-```{ojs filter-site}
-viewof site_vals = cat_checkbox(tags, "site")
-```
-:::
-
-::: {.callout-note collapse="true"}
 ## {{< bi archive class=header-icon >}}Dataset
 
 ```{ojs filter-dataset}
 viewof dataset_vals = cat_checkbox(tags, "dataset")
+```
+:::
+
+::: {.callout-note collapse="true"}
+## {{< bi geo class=header-icon >}}Team
+
+```{ojs filter-site}
+viewof site_vals = cat_checkbox(tags, "site")
 ```
 :::
 
@@ -252,8 +254,8 @@ range_inputs = ([
   
 // specify overlap-based inputs (as variable, values)
 overlap_inputs = ([
-    { v: "site",          vals: site_vals          },
     { v: "dataset",       vals: dataset_vals       },
+    { v: "site",          vals: site_vals          },
     { v: "task_label",    vals: task_label_vals    },
     { v: "language",      vals: language_vals      },
     { v: "adaptive",      vals: adaptive_vals      },
@@ -299,7 +301,7 @@ viewof plot_type = Inputs.radio(
 // plot color variable selector
 cat_array = Object.keys(ti).filter((t) => ti[t].color).map((t) => [ti[t].label, t])
 cat_vars = new Map([["None", null], ...cat_array])
-viewof color_var = Inputs.select(cat_vars, {value: "site", label: "Color"})
+viewof color_var = Inputs.select(cat_vars, {value: "dataset", label: "Color"})
 ```
 :::
 
