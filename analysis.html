@@ -172,7 +172,7 @@ background: var(--bs-light);
 
 <section id="programmatic-access" class="level2">
 <h2 class="anchored" data-anchor-id="programmatic-access">Programmatic access</h2>
-<p>You can access the levante-data-pilots data programmatically using the Redivis API for <a href="https://apidocs.redivis.com/client-libraries/redivis-r">R</a> or <a href="https://apidocs.redivis.com/client-libraries/redivis-python">Python</a>.</p>
+<p>You can access the levante-data-pilots-hackathon data programmatically using the Redivis API for <a href="https://apidocs.redivis.com/client-libraries/redivis-r">R</a> or <a href="https://apidocs.redivis.com/client-libraries/redivis-python">Python</a>.</p>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
 <ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Python</a></li></ul>
 <div class="tab-content">
@@ -188,7 +188,7 @@ background: var(--bs-light);
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(redivis)</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>user <span class="ot">&lt;-</span> redivis<span class="sc">::</span><span class="fu">user</span>(<span class="st">"levante"</span>)</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>dataset <span class="ot">&lt;-</span> user<span class="sc">$</span><span class="fu">dataset</span>(<span class="st">"levante-data-pilots"</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>dataset <span class="ot">&lt;-</span> user<span class="sc">$</span><span class="fu">dataset</span>(<span class="st">"levante-data-pilots-hackathon"</span>)</span>
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>table <span class="ot">&lt;-</span> dataset<span class="sc">$</span><span class="fu">table</span>(<span class="st">"scores"</span>)</span>
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Load table as tidyverse tibble</span></span>
@@ -207,7 +207,7 @@ background: var(--bs-light);
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> redivis</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>user <span class="op">=</span> redivis.user(<span class="st">"levante"</span>)</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>dataset <span class="op">=</span> user.dataset(<span class="st">"levante-data-pilots"</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>dataset <span class="op">=</span> user.dataset(<span class="st">"levante-data-pilots-hackathon"</span>)</span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>table <span class="op">=</span> dataset.table(<span class="st">"scores"</span>)</span>
 <span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Load table as a dataframe</span></span>
