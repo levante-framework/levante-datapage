@@ -12,7 +12,7 @@ initial_scores = transpose(data)
 
 ```{ojs}
 //| output: false
-tag_vars = ["dataset", "site", "task_label", "language", "adaptive", "score_type", "scoring_model"]
+tag_vars = ["dataset", "team", "task_label", "language", "adaptive", "score_type", "scoring_model"]
 var_opts = (df, v) => ([v, [...new Set(df.map(d => d[v]))]])
 get_tags = (df, tags) => Object.fromEntries(tags.map(v => var_opts(df, v)))
 tags = get_tags(scores, tag_vars)
@@ -45,7 +45,7 @@ prep_scores = (sc) => {
       ...obj,
       adaptive: obj.adaptive ? "adaptive" : "non-adaptive",
       task_label: task_info[obj.task_code],
-      site: obj.site.replaceAll("_", "-"),
+      team: obj.team ? obj.team.replaceAll("_", "-") : obj.site.replaceAll("_", "-"),
       dataset: obj.dataset.replaceAll("_", "-")
     })
   })
@@ -77,7 +77,7 @@ vi = ({
 // note: filter property not actually used programmatically
 ti = ({
   "dataset":       { label: "Dataset",       filter: true,  color: true,  tip: true  },
-  "site":          { label: "Team",          filter: true,  color: true,  tip: true  },
+  "team":          { label: "Team",          filter: true,  color: true,  tip: true  },
   "task_label":    { label: "Task",          filter: true,  color: false, tip: false },
   "language":      { label: "Language",      filter: true,  color: true,  tip: false },
   "adaptive":      { label: "Adaptive",      filter: true,  color: true,  tip: false },
@@ -137,8 +137,8 @@ viewof dataset_vals = cat_checkbox(tags, "dataset")
 ::: {.callout-note collapse="true"}
 ## {{< bi geo class=header-icon >}}Team
 
-```{ojs filter-site}
-viewof site_vals = cat_checkbox(tags, "site")
+```{ojs filter-team}
+viewof team_vals = cat_checkbox(tags, "team")
 ```
 :::
 
@@ -255,7 +255,7 @@ range_inputs = ([
 // specify overlap-based inputs (as variable, values)
 overlap_inputs = ([
     { v: "dataset",       vals: dataset_vals       },
-    { v: "site",          vals: site_vals          },
+    { v: "team",          vals: team_vals          },
     { v: "task_label",    vals: task_label_vals    },
     { v: "language",      vals: language_vals      },
     { v: "adaptive",      vals: adaptive_vals      },
@@ -535,8 +535,8 @@ async function getDatasets() {
 // filter datasets by authed user's access + get names of "processed" datasets
 allowedDatasetNames = (ds) => {
   const accessLevels = ["data", "edit"]
-  const extraDatasets = ["levante-data-latest"]
-  const defaultDataset = "levante-data-pilots"
+  const extraDatasets = ["levante-data-latest", "levante-data-pilots-hackathon"]
+  const defaultDataset = "levante-data-pilots-hackathon"
   const datasets = ds.filter(d => accessLevels.includes(d.properties.accessLevel))
     .filter(d => d.properties.tableCount > 0)
     .map(d => d.name)
