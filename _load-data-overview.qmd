@@ -15,7 +15,9 @@ if ("mode" %in% names(quarto) && quarto$mode == "local") {
   overview <- workflow$table("score_summary:45bb")$to_tibble() |>
     tidyr::separate_wider_delim(redivis_source, delim = ":",
                                 names = c("name", "ref", "version")) |>
-    dplyr::mutate(site = site |> stringr::str_replace_all("_", "-"),
+    dplyr::mutate(raw_name = name,
+                  name = raw_name |> stringr::str_remove("_raw$")) |>
+    dplyr::mutate(team = team |> stringr::str_replace_all("_", "-"),
                   dataset = dataset |> stringr::str_replace_all("_", "-"))
 
   if ("mode" %in% names(quarto) && quarto$mode == "cache") {
