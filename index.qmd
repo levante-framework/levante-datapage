@@ -33,9 +33,6 @@ ov = overview.map(obj => ({...obj, task_label: task_info[obj.task_id]})).filter(
 :::: {.column-screen-inset}
 
 ```{ojs diplay-vals}
-overview
-dn
-
 displayScheme = [
   [204, 102, 119],
   [221, 204, 119],
