@@ -8,8 +8,7 @@ library(forcats)
 library(purrr)
 
 org <- redivis$organization("levante")
-params <- org$dataset("levante_metadata_scoring:e97h",
-                      version = "next")$table("item_parameters")$to_tibble()
+params <- org$dataset("levante_metadata_scoring:e97h")$table("item_parameters")$to_tibble()
 items <- params |>
   rename(language = subset) |>
   mutate(language = na_if(language, "all_items")) |>
