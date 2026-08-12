@@ -13,7 +13,7 @@ items = transpose(items_)
 models = transpose(models_)
 
 // create combined item_group and language
-items_coded = items.map(d => ({...d, lang_group: `${d.item_group} | ${d.language}` }))
+items_coded = items.map(d => ({...d, lang_group_label: `${d.item_group_label} | ${d.language}` }))
 // group items by task for task selector
 tasks = d3.group(items_coded, d => d.task_label)
 ```
@@ -27,10 +27,8 @@ viewof task_items = Inputs.select(tasks, { label: "Task", value: tasks.get("Math
 ```{ojs data-prep}
 //| output: false
 
-//item_groups = new Set(task_items.map(d => d.item_group))
-
 // channels for item tooltips
-item_vars = ["item_group", "item_uid", "n_responses", "difficulty"]
+item_vars = ["item_group", "item_group_label", "item_uid", "n_responses", "difficulty"]
 item_channels = Object.fromEntries(item_vars.map(k => [k, k]))
 
 task = task_items[0].task_code // current items' task code
@@ -41,9 +39,11 @@ by_lang = model.language !== undefined // whether items' model is by language
 langs = d3.sort(new Set(task_items.map(d => d.language)))
 // sort order of item groups -- median difficulty (in first language)
 l0_items = task_items.filter(d => d.language === langs[0])
-groups = d3.groupSort(l0_items, g => d3.median(g, d => d.difficulty), d => d.item_group)
+groups = d3.groupSort(l0_items, g => d3.median(g, d => d.difficulty), d => d.item_group_label)
 // sort order of language + item group -- above combined
-indeces = d3.groups(task_items, d => d.lang_group).map(([lang_group, vals]) => [lang_group, langs.indexOf(vals[0].language), groups.indexOf(vals[0].item_group)])
+indeces = d3.groups(task_items, d => d.lang_group_label)
+            .map(([lang_group_label, vals]) =>
+                    [lang_group_label, langs.indexOf(vals[0].language), groups.indexOf(vals[0].item_group_label)])
 lang_groups = d3.sort(indeces, d => d[1], d => d[2]).map(d => d[0])
 ```
 
@@ -60,7 +60,9 @@ heights = ({
   "mrot":   150,
   "trog":   690,
   "vocab":  340,
-  "tom":    500,
+  "tom":    300,
+  "pa":     320,
+  "swr":    600
 })
 
 // shared options for both plots
@@ -68,7 +70,7 @@ item_opts = ({
          style: { fontFamily: "var(--sans-serif)", fontSize: 12, overflow: "visible" },
          width: 700,
         height: heights[task],
-    marginLeft: 120,
+    marginLeft: 200,
      marginTop: 50,
   marginBottom: 40,
           grid: true,
@@ -84,8 +86,8 @@ item_dots = (x_var) => {
   return Plot.marks(
     Plot.dot(task_items, Plot.dodgeY("middle", {
     x: x_var,
-    fy: by_lang ? "lang_group" : "item_group",
-    fill: groups.length > 1 ? "item_group" : "language",
+    fy: by_lang ? "lang_group_label" : "item_group_label",
+    fill: groups.length > 1 ? "item_group_label" : "language",
     r: "n_responses",
     tip: { format: { fy: false }, anchor: "left" },
     channels: item_channels
@@ -96,7 +98,7 @@ item_dots = (x_var) => {
 
 ```{ojs model-info}
 // info on items' model registry record
-html`<div class="source"><a href="${model.file_link}" target="_blank">Source</a>: ${model.itemtype} IRT model (${model.invariance_label}) fit to ${model.n_runs} runs, uploaded on ${model.added_at_date} to model registry version ${model.registry_version}.</div>`
+html`<div class="source"><a href="${model.file_link}" target="_blank">Source</a>: ${model.itemtype} IRT model (${model.invariance_label}) fit to ${model.n_runs} runs, uploaded on ${model.added_at} to model registry version ${model.registry_version}.</div>`
 ```
 
 ```{ojs plot-difficulty}

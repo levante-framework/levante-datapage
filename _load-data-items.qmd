@@ -1,32 +1,31 @@
 ```{r}
-library(rairtable)
+library(redivis)
 library(dplyr)
 library(tidyr)
-library(glue)
-library(purrr)
 library(stringr)
-source("info.R")
+library(glue)
+library(forcats)
+library(purrr)
 
-param_table <- airtable(table = "registry_parameter", base = "appe2p0S3xk4DL2qc")
-params <- read_airtable(param_table) |>
-  as_tibble() |>
-  mutate(across(where(is.list), as.character)) |>
-  mutate(across(where(is.character), \(s) na_if(s, "NULL")))
-
+org <- redivis$organization("levante")
+params <- org$dataset("levante_metadata_scoring:e97h",
+                      version = "next")$table("item_parameters")$to_tibble()
 items <- params |>
-  select(-airtable_record_id, -param_id) |>
-  rename(task_code = item_task) |>
-  # select(task_code = item_task, language, item_uid, item_group, item_entry, difficulty, discrimination, itemtype, n_responses) |>
-  left_join(task_info) |>
-  mutate(item_group = if_else(is.na(item_group), task_code, item_group)) |>
-  arrange(task_label, language, item_uid)
+  rename(language = subset) |>
+  mutate(language = na_if(language, "all_items")) |>
+  mutate(item_group = if_else(is.na(item_group), task_code, item_group),
+         item_group_label = if_else(is.na(item_group_label), task_code, item_group_label)) |>
+  arrange(task_label)
 
 file_link <- \(file_id, version) glue("https://stanford.redivis.com/datasets/e97h-009zz0c49/files/{file_id}?v={version}")
+
 models <- items |>
-  distinct(task_code, language, registry_version, added_at_date, itemtype, groups, n_runs, file_id) |>
+  select(task_code, language, itemtype, registry_version = model_registry_version,
+           n_runs = model_n_runs, added_at, file_id) |>
+  distinct() |>
   mutate(registry_version = registry_version |> str_remove("^v") |> str_replace_all("_", "."),
          file_link = map2_chr(file_id, registry_version, file_link)) |>
-  mutate(itemtype = itemtype |> forcats::fct_recode("Rasch" = "rasch", "2PL" = "2pl"),
+  mutate(itemtype = itemtype |> fct_recode("Rasch" = "rasch", "2PL" = "2pl"),
          invariance_label = if_else(!is.na(language), "by language", "scalar invariant"))
 
 # pass to OJS

@@ -535,12 +535,13 @@ async function getDatasets() {
 // filter datasets by authed user's access + get names of "processed" datasets
 allowedDatasetNames = (ds) => {
   const accessLevels = ["data", "edit"]
-  const extraDatasets = ["levante-data-latest", "levante-data-pilots-hackathon"]
-  const defaultDataset = "levante-data-pilots-hackathon"
+  //const extraDatasets = ["levante-data-latest", "levante-data-pilots-hackathon"]
+  const defaultDataset = "levante-data-pilots"
   const datasets = ds.filter(d => accessLevels.includes(d.properties.accessLevel))
     .filter(d => d.properties.tableCount > 0)
     .map(d => d.name)
-    .filter(n => n.match("processed") || extraDatasets.includes(n))
+    .filter(n => !n.match("-raw|-metadata-|-example"))
+    //.filter(n => n.match("processed") || extraDatasets.includes(n))
     .sort()
   return [defaultDataset, ...datasets]
 }
