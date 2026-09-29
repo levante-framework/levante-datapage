@@ -26,7 +26,12 @@ task_info = ({
 })
 
 mutable dn = [{ name: "levante-data-pilots", ref: "48qk" }] // default datasource
-ov = overview.map(obj => ({...obj, task_label: task_info[obj.task_id]})).filter(d => ds.includes(d.ref))
+ov = overview.map(obj => ({
+  ...obj,
+  task_label: task_info[obj.task_id],
+  date: d3.utcParse("%Y-%m-%d")(obj.date),
+  score: obj.scored ? obj.run_id_hash : null
+})).filter(d => ds.includes(d.ref))
 ```
 
 
@@ -81,7 +86,7 @@ html`<div class="display-box-container">${boxes}</div>`
 ::: {.plot-inputs}
 
 ```{ojs}
-x_var_opts = new Map([["Assessments", "run_id_hash"], ["Participants", "user_id_hash"]])
+x_var_opts = new Map([["Assessments", "run_id_hash"], ["Scores", "score"], ["Participants", "user_id_hash"]])
 viewof x_var = Inputs.select(x_var_opts, { label: "Count of" })
 ```
 
@@ -95,17 +100,24 @@ color_opts = new Map([["", null], ["Team", "team"], ["Dataset", "dataset"], ["La
 viewof color_var = Inputs.select(color_opts, { label: "Grouped by", value: "language" })
 ```
 
+```{ojs}
+recency_opts = new Map([["Anytime", null], ["Past week", 7], ["Past month", 30], ["Past year", 365]])
+viewof bar_recency = Inputs.select(recency_opts, { label: "Collected in", value: null })
+```
+
 :::
 
 ```{ojs}
+// earliest date included by the recency filter
+min_date = (days) => d3.utcDay.offset(d3.utcDay(new Date()), 1 - days)
+ovb = bar_recency === null ? ov : ov.filter(d => d.date >= min_date(bar_recency))
+
 scheme = tol.QualMuted // color scheme
 default_color = scheme[1] // default color when there's no color variable
 plt_color = color_var || default_color // plot color variable
 
 x_lab = x_var_opts.entries().filter(([k, v]) => v === x_var)
 y_lab = y_var_opts.entries().filter(([k, v]) => v === y_var)
-
-//groups = d3.groupSort(ov, g => -new Set(g.map(d => d[x_var])).size, d => d[color_var])
 
 marginLeft = 160
 Plot.plot({
@@ -125,11 +137,11 @@ Plot.plot({
     className: "color-legend"
   },
   marks: [
-    Plot.barX(ov, Plot.groupY(
+    Plot.barX(ovb, Plot.groupY(
       { x: g => new Set(g.map(d => d[x_var])).size },
       { y: y_var, fill: plt_color, sort: { y: "x", reverse: true, }, inset: 1 }
     )),
-    Plot.textX(ov, Plot.stackX(Plot.groupY(
+    Plot.textX(ovb, Plot.stackX(Plot.groupY(
       { x: g => new Set(g.map(d => d[x_var])).size, text: g => new Set(g.map(d => d[x_var])).size },
       { y: y_var, z: plt_color, fill: "white" }
     ))),
@@ -144,12 +156,13 @@ Plot.plot({
 ::: {.plot-inputs}
 
 ```{ojs}
-hist_var_opts = new Map([["Age (years)", "age"]])
+hist_var_opts = new Map([["Assessments", "run_id_hash"], ["Scores", "score"]])
 viewof hist_var = Inputs.select(hist_var_opts, { label: "Count of" })
+```
 
-//hist_bin_opts = new Map([["Age (years)", "age"]])
-//hist_bin_opts = d3.range(1, 24, 1) // months
-//viewof hist_bin = Inputs.select(hist_bin_opts, { label: "Binned to" })
+```{ojs}
+hist_bin_opts = new Map([["Age (years)", "age"], ["Date administered", "date"]])
+viewof hist_bin = Inputs.select(hist_bin_opts, { label: "Binned by" })
 ```
 
 ```{ojs}
@@ -157,10 +170,16 @@ stack_var_opts = new Map([["", null], ["Team", "team"], ["Dataset", "dataset"], 
 viewof stack_var = Inputs.select(stack_var_opts, { label: "Grouped by", value: "language" })
 ```
 
+```{ojs}
+viewof hist_recency = Inputs.select(recency_opts, { label: "Collected in", value: null })
+```
+
 :::
 
 ```{ojs}
-hist_x_lab = hist_var_opts.entries().filter(([k, v]) => v === hist_var)
+ovh = hist_recency === null ? ov : ov.filter(d => d.date >= min_date(hist_recency))
+
+hist_x_lab = hist_bin_opts.entries().filter(([k, v]) => v === hist_bin)
 
 Plot.plot({
   style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
@@ -176,7 +195,6 @@ Plot.plot({
   },
   color: {
     legend: true,
-    label: "bem",
     //domain: groups,
     range: scheme,
     //legend: stack_var !== null,
@@ -184,11 +202,11 @@ Plot.plot({
     className: "color-legend"
   },
   marks: [
-    Plot.rectY(ov, Plot.binX({y: "count"}, {
+    Plot.rectY(ovh.filter(d => d[hist_var] !== null), Plot.binX({y: "count"}, {
       fill: stack_var || default_color,
       x: {
         //interval: hist_bin / 12,
-        value: hist_var
+        value: hist_bin
       }
     })),
   ]
