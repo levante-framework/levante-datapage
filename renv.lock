@@ -1,6 +1,6 @@
 {
   "R": {
-    "Version": "4.5.1",
+    "Version": "4.5.3",
     "Repositories": [
       {
         "Name": "CRAN",
@@ -1720,35 +1720,6 @@
       "NeedsCompilation": "yes",
       "Author": "Hadley Wickham [aut, cre] (ORCID: <https://orcid.org/0000-0003-4757-117X>), Lionel Henry [aut], Posit Software, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>)",
       "Maintainer": "Hadley Wickham <hadley@posit.co>",
-      "Repository": "CRAN"
-    },
-    "rairtable": {
-      "Package": "rairtable",
-      "Version": "0.1.2",
-      "Source": "Repository",
-      "Type": "Package",
-      "Title": "Efficient Wrapper for the 'Airtable' API",
-      "Authors@R": "person(given = \"Matthew\", family = \"Rogers\", role = c(\"aut\", \"cre\"), email = \"matthew.rogers09@gmail.com\")",
-      "Maintainer": "Matthew Rogers <matthew.rogers09@gmail.com>",
-      "Description": "Efficient CRUD interface for the 'Airtable' API <https://airtable.com/developers/web/api>, supporting batch requests and parallel encoding of large data sets.",
-      "License": "MIT + file LICENSE",
-      "Encoding": "UTF-8",
-      "RoxygenNote": "7.1.2",
-      "Imports": [
-        "httr",
-        "jsonlite",
-        "tibble",
-        "dplyr",
-        "cli",
-        "crayon",
-        "rlang",
-        "parallel",
-        "progress"
-      ],
-      "URL": "https://matthewjrogers.github.io/rairtable/",
-      "BugReports": "https://github.com/matthewjrogers/rairtable/issues",
-      "NeedsCompilation": "no",
-      "Author": "Matthew Rogers [aut, cre]",
       "Repository": "CRAN"
     },
     "rappdirs": {
