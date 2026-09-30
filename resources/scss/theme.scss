@@ -64,13 +64,14 @@ main {
 }
 
 .callout-display {
-  flex-grow: 1;
+  container-type: inline-size; // so cq units below track each box's own width
 }
 
 .display-box-container {
-  display: flex;
-  column-gap: 1em;
-  justify-content: space-between;
+  display: grid;
+  // as boxes narrow, wrap onto additional rows instead of squeezing all six
+  grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+  gap: 1em;
   margin-bottom: 2em;
 }
 
@@ -79,6 +80,9 @@ main {
   align-items: center;
   column-gap: 1em;
   padding: .5em 1em .5em .5em;
+  // single scale for the icon and text below, capped at the inherited size
+  font-size: clamp(.5rem, 4.8cqw, 1em);
+  overflow-wrap: normal; // quarto sets "anywhere" on callout titles, breaking labels mid-word
 }
 
 .display-content {
@@ -87,17 +91,15 @@ main {
 }
 
 .display-icon {
-  //font-size: 5em;
-  font-size: clamp(.1em, max(18cqw, 5.2cqh), 4em);
+  font-size: 5em;
 }
 
 .display-var {
-  font-size: 1.1em;
+  font-size: 1.5em;
   font-weight: normal;
 }
 
 .display-val {
-  //font-size: 3.5em;
-  font-size: clamp(.1em, 15cqw, 3em);
+  font-size: 3.5em;
   line-height: normal;
 }
