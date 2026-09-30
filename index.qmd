@@ -1,12 +1,14 @@
 {{< include _load-data-overview.qmd >}}
 {{< include components/_style.qmd >}}
 {{< include components/_tol.qmd >}}
+{{< include components/_dropdown-input.qmd >}}
 
 ```{ojs prelims}
 //| output: false
 
 Plot = import("https://esm.sh/@observablehq/plot@0.6.17")
 import {yamultiselect} from '@saneef/yet-another-multi-select'
+//import {dropdownInput, dropdownCSS} from '@tashapiro/dropdown-input'
 
 overview = transpose(overview_)
 
@@ -101,7 +103,7 @@ viewof color_var = Inputs.select(color_opts, { label: "Grouped by", value: "lang
 ```
 
 ```{ojs}
-recency_opts = new Map([["Anytime", null], ["Past week", 7], ["Past month", 30], ["Past year", 365]])
+recency_opts = new Map([["Anytime", null], ["Past 7 days", 7], ["Past 30 days", 30], ["Past 90 days", 90], ["Past year", 365]])
 viewof bar_recency = Inputs.select(recency_opts, { label: "Collected in", value: null })
 ```
 
@@ -201,12 +203,15 @@ h_found ? Plot.plot({
   //width: 1000,
   width: 0.5 * width,
   height: 300,
-  marginTop: 10,
-  marginBottom: 40,
+  marginTop: 20,
+  marginBottom: 50,
   x: {
     //domain: [3,12],
     label: hist_x_lab[0],
     line: true
+  },
+  y: {
+    label: "Count",
   },
   color: {
     legend: true,
@@ -244,6 +249,13 @@ _Note: To change data sources, you need a [Redivis](https://redivis.com) account
 
 ::: {.filters-container}
 
+```{ojs}
+//| output: false
+
+dnf = dn.filter(d => overview.map(v => v.ref).includes(d.ref))
+ds_opts = dnf.map(d => ({ label: d.name.replace("-raw", ""), value: d.ref }))
+```
+
 ```{ojs populate-datasource}
 // populates datasource selector -- first click should open redivis auth pop up
 viewof auth_button = Inputs.button("Populate data sources", {
@@ -255,8 +267,14 @@ viewof auth_button = Inputs.button("Populate data sources", {
 ```
 
 ```{ojs select-datasource}
-dnf = dn.filter(d => overview.map(v => v.ref).includes(d.ref))
-viewof ds = yamultiselect(new Map(dnf.map(d => [d.name.replace("-raw", ""), d.ref])), { value: dnf.map(d => d.ref), placeholder: "Select...", width: "100%" })
+viewof ds = dropdownInput({
+  inputLabel: "",
+  inputId: "datasets",
+  placeholderText: 'Select...',
+  options: ds_opts,
+  selected: ds_opts.map(d => d.value),
+  width: "50%"
+})
 ```
 
 :::

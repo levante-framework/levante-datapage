@@ -1,4 +1,6 @@
 ```{ojs _interval}
+//| output: false
+
 // https://observablehq.com/@mootari/range-slider
 
 function interval(range = [], options = {}) {
@@ -311,4 +313,3 @@ theme_Flat = `
 }
 `
 ```
-
