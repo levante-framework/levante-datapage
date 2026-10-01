@@ -1,6 +1,8 @@
 project:
   title: "LEVANTE"
   type: website
+  preview:
+    port: 3141
 
 website:
   navbar:
@@ -34,8 +36,5 @@ execute:
 # mode: cache
 redivis:
   user: levante
-  dataset: levante-data-pilots-hackathon
+  dataset: levante-data-pilots
   table: scores
-
-resources:
-  - "resources/fonts/*"
