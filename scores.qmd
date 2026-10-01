@@ -1,6 +1,7 @@
 {{< include _load-data-scores.qmd >}}
 
 {{< include components/_interval.qmd >}}
+{{< include components/_filter-checkbox.qmd >}}
 {{< include components/_tol.qmd >}}
 {{< include components/_style.qmd >}}
 
@@ -135,8 +136,8 @@ var_interval = (v, interval_format, interval_fun = interval) => {
 ::: {.filters-container}
 
 ```{ojs filter-age}
-// checkbox input for a given categorical variable
-cat_checkbox = (tags, t) => Inputs.checkbox(tags[t], {value: tags[t]})
+// checkbox input for a given categorical variable, with only/all/none actions
+cat_checkbox = (tags, t) => filter_checkbox(tags[t])
 viewof age_range = var_interval("age", interval_number)
 ```
 
@@ -184,7 +185,8 @@ viewof language_vals = cat_checkbox(tags, "language")
 ## {{< bi speedometer class=header-icon >}}Adaptive
 
 ```{ojs filter-adaptive}
-viewof adaptive_vals = cat_checkbox(tags, "adaptive")
+// just two values, so only/all/none would be noise -- but keep the counter
+viewof adaptive_vals = filter_checkbox(tags["adaptive"], { actions: false })
 ```
 :::
 
@@ -503,23 +505,25 @@ span = (x) => [Math.floor(d3.min(x)), Math.ceil(d3.max(x))]
 age_span = span(scoresf.map(d => d.age))
 ages = d3.range(age_span[0], age_span[1] + 1, 1)
 
-// plot scores!
-scorePlot = Plot.plot({
-  style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
-  width: 1000,
-   grid: true,
-      x: { line: true, domain: age_span, ticks: ages, tickFormat: d3.format(".0f") },
-      y: { line: true },
-      r: { transform: (s) => s ? 1/s : 1, range: [0, 4] }, // radius inversely proportional
-  color: {
-    domain: Object.keys(colors),
-    range: Object.values(colors),
-    legend: color_var !== null,
-    className: "color-legend"
-  },
-  facet: { axis: null }, // hide facet labels
-  marks: marks[plot_type] // use marks according to plot type (dot/line)
-})
+// plot scores!, or say so when the filters select nothing
+scorePlot = scoresf.length === 0
+  ? html`<p class="filter-error"><i class="bi bi-exclamation-triangle"></i> No data selected</p>`
+  : Plot.plot({
+      style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
+      width: 1000,
+       grid: true,
+          x: { line: true, domain: age_span, ticks: ages, tickFormat: d3.format(".0f") },
+          y: { line: true },
+          r: { transform: (s) => s ? 1/s : 1, range: [0, 4] }, // radius inversely proportional
+      color: {
+        domain: Object.keys(colors),
+        range: Object.values(colors),
+        legend: color_var !== null,
+        className: "color-legend"
+      },
+      facet: { axis: null }, // hide facet labels
+      marks: marks[plot_type] // use marks according to plot type (dot/line)
+    })
 ```
 
 :::

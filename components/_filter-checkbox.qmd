@@ -1,0 +1,146 @@
+```{ojs _filter-checkbox}
+//| output: false
+
+// categorical filter input: a checkbox list that keeps every value visible,
+// plus group actions and a per-value "only" for isolating a single value.
+// wraps Inputs.checkbox, so .value stays an array in data order and the
+// element still works as a viewof
+filter_checkbox = (values, options = {}) => {
+  // actions: false keeps the counter but drops only/all/none, for variables
+  // with so few values that isolating one is not worth the extra controls
+  const { actions = true, ...rest } = options
+  const input = Inputs.checkbox(values, { value: values, ...rest })
+  const rows = input.querySelector("div") // the div holding one label per value
+
+  // set the selection and notify downstream cells (the setter alone is silent)
+  const set = (vals) => {
+    input.value = vals
+    input.dispatchEvent(new Event("input", { bubbles: true }))
+  }
+
+  const action = (text, fun, cls = "cat-action") => {
+    const el = html`<button type="button" class=${cls}>${text}</button>`
+    el.onclick = (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      fun()
+    }
+    return el
+  }
+
+  if (actions) {
+    // group actions
+    rows.before(html`<div class="cat-header">
+      ${action("all", () => set(values))}
+      ${action("none", () => set([]))}
+    </div>`)
+
+    // per-value "only": lives inside the pill, and is always in the layout (just
+    // faded) so that revealing it on hover does not reflow the wrapped pills
+    const labels = [...rows.children]
+    labels.forEach((label, i) => {
+      const btn = action("only", () => set([values[i]]), "cat-only")
+      btn.title = `only ${values[i]}`
+      label.append(btn)
+    })
+  }
+
+  // selection summary, shown in the callout header so that it is readable while
+  // the callout is collapsed. the input is not in the document yet when this
+  // cell runs, so wait for it to be inserted before looking for the header
+  let header_count = null
+  requestAnimationFrame(() => {
+    const header = input.closest(".callout")?.querySelector(".callout-title-container")
+    if (!header) return
+    // the cell re-runs whenever the values change (e.g. switching data source),
+    // and the header lives outside the cell output, so a summary left behind by
+    // a previous instance has to be cleared rather than appended to
+    header.querySelectorAll(".cat-summary").forEach(el => el.remove())
+    header_count = html`<span class="cat-summary"></span>`
+    header.append(header_count)
+    update()
+  })
+
+  const update = () => {
+    if (header_count) header_count.textContent = `${input.value.length} of ${values.length}`
+  }
+  input.addEventListener("input", update)
+  update()
+
+  return input
+}
+```
+
+```{ojs _filter-checkbox-styles}
+//| output: false
+html`<style>
+  .cat-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.3em;
+    margin-bottom: 0.35em;
+    /* the inputs form is a wrapping flex container, so claim the whole line to
+       keep short checkbox sets from sitting next to the buttons */
+    flex: 0 0 100%;
+  }
+
+  /* button-like, but outlined rather than filled so they read as actions
+     rather than as another value pill.
+     quarto tags buttons in cell output with .btn-quarto, and layout.scss styles
+     those via div.cell-output-display, so these selectors have to be specific
+     enough to win against it (and against .oi-* button { font: inherit }) */
+  .cat-header button.cat-action {
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 0.5rem;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.7rem;
+    color: #333;
+    cursor: pointer;
+  }
+
+  .cat-header button.cat-action:hover {
+    background-color: #fbe4b4;
+    border-color: #999;
+  }
+
+  .cat-summary {
+    margin-left: 0.5em;
+    font-weight: normal;
+    font-style: italic;
+    opacity: 0.7;
+  }
+
+  /* the pill is the <label>; keep the only-button in flow but faded.
+     quarto gives these buttons bootstrap's .btn classes, so .btn:hover paints a
+     background behind them -- turning that off needs a selector that
+     out-specifies it, and the hover cue is the text colour instead */
+  label button.cat-only {
+    border: none;
+    background: none;
+    padding: 0 0 0 0.35em;
+    margin: 0;
+    font-size: 0.75em;
+    line-height: 1;
+    color: #333;
+    cursor: pointer;
+    opacity: 0.3;
+  }
+
+  /* revealed by hovering anywhere on the pill */
+  label:hover button.cat-only {
+    opacity: 1;
+  }
+
+  /* highlighted by hovering the word itself. !important because bootstrap's
+     .btn:hover paints a background and colour here, and out-specifying it is
+     brittle -- quarto adds the .btn classes to these buttons behind our back */
+  label button.cat-only:hover,
+  label button.cat-only:focus {
+    background: none !important;
+    box-shadow: none !important;
+    color: #2c728e !important;
+    opacity: 1;
+  }
+</style>`
+```
