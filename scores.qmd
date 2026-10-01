@@ -36,6 +36,15 @@ task_info = ({
    "swr": "Word Reading",
 })
 
+// time_started is always utc, but arrives in two formats: "2024-05-07 09:06:25"
+// via ojs_define from the r loader, and iso ("2024-05-07T13:05:41.810Z") from the
+// redivis js client used by the data source switcher
+parse_time = (t) => {
+  if (t == null) return null
+  if (t instanceof Date) return t
+  return d3.utcParse("%Y-%m-%d %H:%M:%S")(t) || d3.isoParse(t)
+}
+
 prep_scores = (sc) => {
   return sc.map(obj => {
     return tag_vars.reduce((acc, key) => ({
@@ -46,7 +55,8 @@ prep_scores = (sc) => {
       adaptive: obj.adaptive ? "adaptive" : "non-adaptive",
       task_label: task_info[obj.task_code],
       team: obj.team ? obj.team.replaceAll("_", "-") : obj.site.replaceAll("_", "-"),
-      dataset: obj.dataset.replaceAll("_", "-")
+      dataset: obj.dataset.replaceAll("_", "-"),
+      date: parse_time(obj.time_started),
     })
   })
     .filter(d => d.task_label !== "NA")
@@ -65,8 +75,9 @@ mutable scores = prep_scores(initial_scores)
 // tip = include in tooltip? range = slider extent (if applicable)
 // note: filter property not actually used programmatically
 vi = ({
-  "age":           { label: "Age (years)",      filter: true,  tip: true,  range: [4, 12] },
-  "age_gap":       { label: "Age gap (months)", filter: true,  tip: false, range: [0, 24] },
+  "age":           { label: "Age (years)",      filter: true,  tip: true,  range: [2, 16], value: [4, 12] },
+  "age_gap":       { label: "Age gap (months)", filter: true,  tip: false, range: [0, 24], value: [0, 24] },
+  "date":          { label: "Date",             filter: true,  tip: false, range: dates, value: dates },
   "score":         { label: "Score",            filter: false, tip: true,  range: null    },
   "score_se":      { label: "Score SE",         filter: false, tip: true,  range: null    },
   "num_attempted": { label: "num_attempted",    filter: false, tip: true,  range: null    }
@@ -89,17 +100,24 @@ ti = ({
 
 ```{ojs filter-funs}
 //| output: false
+
+// min and max dates in data
+dates = [d3.min(scores.map(d => d.date)), d3.max(scores.map(d => d.date))]
+
 // formatting function for how two ended slider displays selected range
 // e.g. [5, 12]
-interval_format = ([start, end]) => `[${Plot.formatNumber("en-US")(start)}; ${Plot.formatNumber("en-US")(end)}]`
+interval_number = ([start, end]) => `[${Plot.formatNumber("en-US")(start)}; ${Plot.formatNumber("en-US")(end)}]`
+
+interval_date = ([start, end]) => `[${d3.utcFormat("%Y-%m-%d")(start)}; ${d3.utcFormat("%Y-%m-%d")(end)}]`
 
 // integer-rounded min and max of an array
 // range = (x) => [Math.floor(d3.min(x)), Math.ceil(d3.max(x))]
 
-// interval input for a given numeric variable
-var_interval = (v) => {
-  return interval(vi[v].range, {
-    step: 1, label: vi[v].label, format: interval_format, width: "95%", color: "#f7ca69"
+// interval input for a given numeric variable (interval_fun = dateInterval for dates)
+var_interval = (v, interval_format, interval_fun = interval) => {
+  return interval_fun(vi[v].range, {
+    step: 1, label: vi[v].label, value: vi[v].value,
+    format: interval_format, width: "95%", color: "#f7ca69"
   })
 }
 ```
@@ -119,11 +137,15 @@ var_interval = (v) => {
 ```{ojs filter-age}
 // checkbox input for a given categorical variable
 cat_checkbox = (tags, t) => Inputs.checkbox(tags[t], {value: tags[t]})
-viewof age_range = var_interval("age")
+viewof age_range = var_interval("age", interval_number)
 ```
 
 ```{ojs filter-age-gap}
-viewof age_gap_range = var_interval("age_gap")
+viewof age_gap_range = var_interval("age_gap", interval_number)
+```
+
+```{ojs filter-date}
+viewof date_range = var_interval("date", interval_date, dateInterval)
 ```
 
 ::: {.callout-note collapse="true"}
@@ -239,7 +261,8 @@ range_filter = (v, v_range) => {
 
 // generate overlap filter function for a given categorical variable and input values
 overlap_filter = (t, t_vals) => {
-  return (d) => t_vals.some(v => d[t] === v)
+  const vals = new Set(t_vals) // set lookup, not a scan per row
+  return (d) => vals.has(d[t])
 }
 
 // generate overlap filter function as above but that defaults to including everything if input values empty
@@ -249,7 +272,8 @@ overlap_null_filter = (t, t_vals) => {
 
 // specify range-based inputs (as variable, values)
 range_inputs = ([
-  { v: "age", vals: age_range },
+  { v: "age",  vals: age_range  },
+  { v: "date", vals: date_range },
 ])
   
 // specify overlap-based inputs (as variable, values)
@@ -276,13 +300,14 @@ range_filters = range_inputs.map(({ v, vals }) => range_filter(v, vals))
 overlap_filters = overlap_inputs.map(({ v, vals }) => overlap_filter(v, vals))
 all_filters = [...range_filters, ...overlap_filters]
 
-// apply filters to score data
-sf = all_filters.reduce((sc, fun) => sc.filter(fun), scores)
+// apply filters to score data (one pass, rather than one pass per filter)
+sf = scores.filter(d => all_filters.every(fun => fun(d)))
 
 // apply age gap filter
 ag = ls.filter(d => d.age_gap === NaN || (d.age_gap >= age_gap_range[0] & d.age_gap <= age_gap_range[1]))
-ag_runs = ag.map(d => d.runs).flat()
-scoresf = sf.filter(d => ag_runs.includes(d.run_id))
+// set, not an array: this is looked up once per row of sf
+ag_runs = new Set(ag.map(d => d.runs).flat())
+scoresf = sf.filter(d => ag_runs.has(d.run_id))
 ```
 
 :::: {.output-container}

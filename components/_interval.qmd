@@ -75,6 +75,8 @@ ${html`<style>${css}`}
     }
   };
   $range.oninput = update;
+  // the slider only fires input on release, so follow its drags for the readout
+  $range.addEventListener('dragging', update);
   update();
   
   return Object.defineProperty($view, 'value', {
@@ -82,6 +84,38 @@ ${html`<style>${css}`}
     set: ([a, b]) => {
       $range.value = [a, b];
       update();
+    },
+  });
+}
+
+// date version of interval. the underlying input only handles numbers, so work
+// in epoch milliseconds internally and report the value as dates. step is in
+// days, and the range is widened to whole UTC days so values land on dates.
+function dateInterval(range = [], options = {}) {
+  const day = 864e5;
+  const fmtDate = d3.utcFormat("%Y-%m-%d");
+  const [min, max] = [d3.utcDay.floor(range[0]), d3.utcDay.ceil(range[1])];
+  const {
+    step = 1,
+    value = [min, max],
+    format = ([start, end]) => `${fmtDate(start)} … ${fmtDate(end)}`,
+    ...rest
+  } = options;
+
+  const $interval = interval([+min, +max], {
+    ...rest,
+    step: step * day,
+    // widen outward, else the slider snaps to the nearest day and clips the ends
+    value: [+d3.utcDay.floor(value[0]), +d3.utcDay.ceil(value[1])],
+    format: ([start, end]) => format([new Date(start), new Date(end)]),
+  });
+
+  // input events bubble up from the slider, so the wrapper works as a viewof
+  const $view = html`<div>${$interval}`;
+  return Object.defineProperty($view, 'value', {
+    get: () => $interval.value.map(ms => new Date(ms)),
+    set: ([a, b]) => {
+      $interval.value = [+a, +b];
     },
   });
 }
@@ -119,7 +153,7 @@ function rangeInput(options = {}) {
   ${html`<style>${theme.replace(/:scope\b/g, '.'+scope)}`}
 </div>`;
 
-  let value = [], changed = false;
+  let value = [], changed = false, dragging = false;
   Object.defineProperty(dom, 'value', {
     get: () => [...value],
     set: ([a, b]) => {
@@ -149,7 +183,9 @@ function rangeInput(options = {}) {
     updateRange();
     // Only dispatch if values have changed.
     if(pmin === value[0] && pmax === value[1]) return;
-    dispatch('input');
+    // mid-drag this only moves the readout; 'input' (which downstream cells
+    // recompute on) fires once on release rather than on every step crossed
+    dispatch(dragging ? 'dragging' : 'input');
     changed = true;
   };
   
@@ -178,7 +214,7 @@ function rangeInput(options = {}) {
   const on  = (e, fn) => e.split(' ').map(e => document.addEventListener(e, fn, {passive: false}));
   const off = (e, fn) => e.split(' ').map(e => document.removeEventListener(e, fn, {passive: false}));
   
-  let initialX, initialV, target, dragging = false;
+  let initialX, initialV, target;
   function handleDrag(e) {
     // Gracefully handle exit and reentry of the viewport.
     if(!e.buttons && !e.touches) {
@@ -195,7 +231,10 @@ function rangeInput(options = {}) {
   function handleDragStop(e) {
     off('mousemove touchmove', handleDrag);
     off('mouseup touchend', handleDragStop);
-    if(changed) dispatch('change');
+    if(changed) {
+      dispatch('input');
+      dispatch('change');
+    }
   }
   
   invalidation.then(handleDragStop);
