@@ -28,9 +28,7 @@ body {
   overscroll-behavior-y: none;
 }
 
-.observablehq--error {
-  display: none;
-}
+//.observablehq--error { display: none; }
 
 :where(.color-legend-swatches) {
   font-family: var(--sans-serif) !important;
@@ -119,4 +117,10 @@ main {
 .display-val {
   font-size: 3.5em;
   line-height: normal;
+}
+
+// icon before the text of a radio option
+.opt-icon {
+  margin-right: 0.35em;
+  opacity: 0.75;
 }

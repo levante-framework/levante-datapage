@@ -13,7 +13,8 @@ initial_scores = transpose(data)
 
 ```{ojs}
 //| output: false
-tag_vars = ["dataset", "team", "task_label", "language", "adaptive", "score_type", "scoring_model"]
+tag_vars = ["dataset", "team", "language", "task_label", "adaptive", "scoring_method"]
+//"score_type", "scoring_model"
 var_opts = (df, v) => ([v, [...new Set(df.map(d => d[v]))]])
 get_tags = (df, tags) => Object.fromEntries(tags.map(v => var_opts(df, v)))
 tags = get_tags(scores, tag_vars)
@@ -58,6 +59,7 @@ prep_scores = (sc) => {
       team: obj.team ? obj.team.replaceAll("_", "-") : obj.site.replaceAll("_", "-"),
       dataset: obj.dataset.replaceAll("_", "-"),
       date: parse_time(obj.time_started),
+      scoring_method: obj.scoring_model === undefined ? obj.score_type : `IRT - ${obj.scoring_model}`
     })
   })
     .filter(d => d.task_label !== "NA")
@@ -88,14 +90,13 @@ vi = ({
 // color = include in color dropdown?, tip = include in tooltip?
 // note: filter property not actually used programmatically
 ti = ({
-  "dataset":       { label: "Dataset",       filter: true,  color: true,  tip: true  },
-  "team":          { label: "Team",          filter: true,  color: true,  tip: true  },
-  "task_label":    { label: "Task",          filter: true,  color: false, tip: false },
-  "language":      { label: "Language",      filter: true,  color: true,  tip: false },
-  "adaptive":      { label: "Adaptive",      filter: true,  color: true,  tip: false },
-  "score_type":    { label: "Score type",    filter: true,  color: true,  tip: false },
-  "scoring_model": { label: "Scoring model", filter: true,  color: true,  tip: false },
-  "run_id":        { label: "run_id",        filter: false, color: false, tip: true  },
+  "dataset":        { label: "Dataset",        filter: true,  color: true,  tip: true  },
+  "team":           { label: "Team",           filter: true,  color: true,  tip: true  },
+  "language":       { label: "Language",       filter: true,  color: true,  tip: false },
+  "task_label":     { label: "Task",           filter: true,  color: false, tip: false },
+  "adaptive":       { label: "Adaptive",       filter: true,  color: true,  tip: false },
+  "scoring_method": { label: "Scoring method", filter: true,  color: true,  tip: false },
+  "run_id":         { label: "run_id",         filter: false, color: false, tip: true  },
 })
 ```
 
@@ -166,18 +167,18 @@ viewof team_vals = cat_checkbox(tags, "team")
 :::
 
 ::: {.callout-note collapse="true"}
-## {{< bi ui-checks-grid class=header-icon >}}Task
-
-```{ojs filter-task_label}
-viewof task_label_vals = cat_checkbox(tags, "task_label")
-```
-:::
-
-::: {.callout-note collapse="true"}
 ## {{< bi translate class=header-icon >}}Language
 
 ```{ojs filter-language}
 viewof language_vals = cat_checkbox(tags, "language")
+```
+:::
+
+::: {.callout-note collapse="true"}
+## {{< bi ui-checks-grid class=header-icon >}}Task
+
+```{ojs filter-task_label}
+viewof task_label_vals = cat_checkbox(tags, "task_label")
 ```
 :::
 
@@ -191,18 +192,10 @@ viewof adaptive_vals = filter_checkbox(tags["adaptive"], { actions: false })
 :::
 
 ::: {.callout-note collapse="true"}
-## {{< bi clipboard-data class=header-icon >}}Score type
+## {{< bi sliders class=header-icon >}}Scoring method
 
-```{ojs filter-score_type}
-viewof score_type_vals = cat_checkbox(tags, "score_type")
-```
-:::
-
-::: {.callout-note collapse="true"}
-## {{< bi sliders class=header-icon >}}Scoring model
-
-```{ojs filter-scoring_model}
-viewof scoring_model_vals = cat_checkbox(tags, "scoring_model")
+```{ojs filter-scoring_method}
+viewof scoring_method_vals = cat_checkbox(tags, "scoring_method")
 ```
 :::
 
@@ -216,7 +209,7 @@ viewof scoring_model_vals = cat_checkbox(tags, "scoring_model")
 ::: {.side-inputs}
 
 ::: {.info-text}
-_Note: To change data sources, you need a [Redivis](https://redivis.com) account. Click on the button below to log into your Redivis account and list the data sources that you have access to._
+_To change data sources, you need a [Redivis](https://redivis.com) account. Click on the button below to log in and list data sources you have access to._
 :::
 
 
@@ -285,8 +278,9 @@ overlap_inputs = ([
     { v: "task_label",    vals: task_label_vals    },
     { v: "language",      vals: language_vals      },
     { v: "adaptive",      vals: adaptive_vals      },
-    { v: "score_type",    vals: score_type_vals    },
-    { v: "scoring_model", vals: scoring_model_vals },
+    //{ v: "score_type",    vals: score_type_vals    },
+    //{ v: "scoring_model", vals: scoring_model_vals },
+    { v: "scoring_method", vals: scoring_method_vals },
 ])
 
 //apply_filters = (df, ri, oi) => {
@@ -320,15 +314,34 @@ scoresf = sf.filter(d => ag_runs.has(d.run_id))
 // plot type selector
 viewof plot_type = Inputs.radio(
   new Map([["Cross-sectional", "dot"], ["Longitudinal", "line"]]),
-  {value: "dot", label: "Data view"}
+  {value: "dot", label: "Data view", format: icon_label}
 )
 ```
 
 ```{ojs color-var}
 // plot color variable selector
 cat_array = Object.keys(ti).filter((t) => ti[t].color).map((t) => [ti[t].label, t])
-cat_vars = new Map([["None", null], ...cat_array])
-viewof color_var = Inputs.select(cat_vars, {value: "dataset", label: "Color"})
+color_keys = cat_array.map(([label, k]) => k)
+cat_vars = new Map([...cat_array, ["None", null]])
+
+// bootstrap icon for each option, matching the filter callout headers
+opt_icons = ({
+  //"None": "slash-circle",
+  "Dataset": "archive",
+  "Team": "geo",
+  "Language": "translate",
+  "Adaptive": "speedometer",
+  "Scoring method": "sliders",
+  "Cross-sectional": "calendar3",
+  "Longitudinal": "graph-up"
+})
+
+// radio option rendered with its icon, falling back to text alone
+icon_label = ([label]) => opt_icons[label]
+  ? html`<span><i class="bi bi-${opt_icons[label]} opt-icon"></i>${label}</span>`
+  : html`<span>${label}</span>`
+
+viewof color_var = Inputs.radio(cat_vars, { value: "dataset", label: "Color", format: icon_label })
 ```
 :::
 
@@ -360,7 +373,10 @@ color_range = [...scheme.slice(0, color_vals.length), unk_color]
 // map from domain to range
 color_map = color_domain.map((v, i) => [v, color_range[i]])
 // drop elements from map if values not in data
-colors = Object.fromEntries(color_map.filter(([k, v]) => scoresf.map((d) => d[color_var]).includes(k)))
+// values actually present in the data, gathered once rather than rescanned
+// for every entry in the map
+present_colors = new Set(scoresf.map((d) => d[color_var]))
+colors = Object.fromEntries(color_map.filter(([k, v]) => present_colors.has(k)))
 
 // create facet specification to emulate facet wrap
 // given data, column name to facet by, and number of columns
@@ -432,7 +448,10 @@ ls = Array.from(
     ([z_val, points]) => ({
       [f_var]: f_val,
       [z_var]: z_val,
-      [color_var]: points[0][color_var],
+      // every colourable variable, not just the selected one: referencing
+      // color_var here would make a colour change invalidate this summary, and
+      // with it ag, ag_runs, scoresf and every downstream cell
+      ...Object.fromEntries(color_keys.map((k) => [k, points[0][k]])),
       [x_var]: d3.mean(points, d => d[x_var]),
       [y_var]: d3.mean(points, d => d[y_var]),
       n_scores: points.length,
@@ -449,12 +468,15 @@ ls = Array.from(
 // filter line segment summary to users with more than one score
 line_summary = ls.filter(d => d.n_scores > 1)
 // filter scores to runs filtered line summary
-long_runs = line_summary.map(d => d.runs).flat()
-scoresl = scoresf.filter(d => long_runs.includes(d.run_id))
+// set, not an array: this is looked up once per row of scoresf
+long_runs = new Set(line_summary.map(d => d.runs).flat())
+scoresl = scoresf.filter(d => long_runs.has(d.run_id))
 
 // channels for line tooltips (everything in summary other than facet variable)
 //line_vars = Object.keys(line_summary[0]).filter(d => d !== f_var)
-line_vars = [color_var, z_var, "n_scores", "age_gap"]
+// color_var is null when nothing is selected, and a null channel makes Plot
+// throw "missing channel value" as soon as the mark is constructed
+line_vars = [color_var, z_var, "n_scores", "age_gap"].filter((v) => v !== null)
 line_channels = Object.fromEntries(line_vars.map(k => [k, k]))
 
 // marks for lines

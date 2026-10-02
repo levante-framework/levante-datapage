@@ -56,7 +56,7 @@ displayConfig = ([
   { index: 2, property: "language",     label: "Languages",    icon: "translate"      },
   { index: 3, property: "task_id",      label: "Tasks",        icon: "ui-checks-grid" },
   { index: 4, property: "user_id_hash", label: "Participants", icon: "person-arms-up" },
-  { index: 5, property: "score",        label: "Scores",       icon: "speedometer" },
+  { index: 5, property: "score",        label: "Scores",       icon: "bullseye" },
   { index: 6, property: "run_id_hash",  label: "Assessments",  icon: "clipboard-data" },
 ])
 
@@ -107,6 +107,32 @@ scheme = tol.QualMuted // color scheme
 default_color = scheme[1] // default color when there's no grouping variable
 plt_color = group_var || default_color // plot color variable
 
+// bootstrap icon for each radio option, reusing the display box icons above.
+// labels are unique across the inputs, except dataset/team/language/task which
+// mean the same thing in both places
+opt_icons = ({
+  "Assessments": "clipboard-data",
+  "Scores": "bullseye",
+  "Participants": "person-arms-up",
+  "Dataset": "archive",
+  "Team": "geo",
+  "Language": "translate",
+  "Task": "ui-checks-grid",
+  //"None": "slash-circle",
+  "Age": "people",
+  "Date administered": "calendar-event",
+  //"7 days": "calendar3",
+  //"30 days": "calendar3",
+  //"90 days": "calendar3",
+  //"365 days": "calendar3",
+  //"Anytime": "infinity"
+})
+
+// radio option rendered with its icon, falling back to text alone
+icon_label = ([label]) => opt_icons[label]
+  ? html`<span><i class="bi bi-${opt_icons[label]} opt-icon"></i>${label}</span>`
+  : html`<span>${label}</span>`
+
 // shown in place of a plot when the filters exclude everything
 no_data = () => html`<p class="filter-error"><i class="bi bi-exclamation-triangle"></i> No data selected</p>`
 ```
@@ -121,17 +147,17 @@ no_data = () => html`<p class="filter-error"><i class="bi bi-exclamation-triangl
 
 ```{ojs input-count}
 count_opts = new Map([["Assessments", "run_id_hash"], ["Scores", "score"], ["Participants", "user_id_hash"]])
-viewof count_var = Inputs.radio(count_opts, { label: "Count of", value: "run_id_hash" })
+viewof count_var = Inputs.radio(count_opts, { label: "Count of", value: "run_id_hash", format: icon_label })
 ```
 
 ```{ojs input-group}
 group_opts = new Map([["Dataset", "dataset"], ["Team", "team"], ["Language", "language"], ["Task", "task_label"], ["None", null]])
-viewof group_var = Inputs.radio(group_opts, { label: "Grouped by", value: "language" })
+viewof group_var = Inputs.radio(group_opts, { label: "Grouped by", value: "language", format: icon_label })
 ```
 
 ```{ojs input-recency}
 recency_opts = new Map([["7 days", 7], ["30 days", 30], ["90 days", 90], ["365 days", 365], ["Anytime", null]])
-viewof recency = Inputs.radio(recency_opts, { label: "Collected within past", value: null })
+viewof recency = Inputs.radio(recency_opts, { label: "Collected within past", value: null, format: icon_label })
 ```
 
 :::
@@ -143,13 +169,13 @@ viewof recency = Inputs.radio(recency_opts, { label: "Collected within past", va
 
 ```{ojs input-for-each}
 y_var_opts = new Map([["Dataset", "dataset"], ["Team", "team"], ["Language", "language"], ["Task", "task_label"]])
-viewof y_var = Inputs.radio(y_var_opts, { label: "For each", value: "task_label" })
+viewof y_var = Inputs.radio(y_var_opts, { label: "For each", value: "task_label", format: icon_label })
 ```
 
 :::
 
 ```{ojs bar-plot}
-marginLeft = 140
+marginLeft = 152
 
 ovf.length === 0 ? no_data() : Plot.plot({
   style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
@@ -185,7 +211,7 @@ ovf.length === 0 ? no_data() : Plot.plot({
 
 ```{ojs input-binned-by}
 hist_bin_opts = new Map([["Age", "age"], ["Date administered", "date"]])
-viewof hist_bin = Inputs.radio(hist_bin_opts, { label: "Binned by", value: "age" })
+viewof hist_bin = Inputs.radio(hist_bin_opts, { label: "Binned by", value: "age", format: icon_label })
 ```
 
 :::

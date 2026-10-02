@@ -63,7 +63,9 @@ form > label, .label:has(+ .form) {
 .plot-inputs {
   display: flex;
   column-gap: 1em;
-  max-width: calc(700px - 40px);
+  // no max-width: the containing plot cell is the only sensible constraint, and
+  // capping it here forced the option sets to wrap onto extra lines
+
   // match the sidebar inputs, where quarto's .panel-input sets .9rem and
   // .filters-container scales that by .85
   font-size: 0.9rem * 0.85;
