@@ -64,6 +64,9 @@ form > label, .label:has(+ .form) {
   display: flex;
   column-gap: 1em;
   max-width: calc(700px - 40px);
+  // match the sidebar inputs, where quarto's .panel-input sets .9rem and
+  // .filters-container scales that by .85
+  font-size: 0.9rem * 0.85;
 }
 
 .plot-inputs form {

@@ -7,8 +7,6 @@
 //| output: false
 
 Plot = import("https://esm.sh/@observablehq/plot@0.6.17")
-import {yamultiselect} from '@saneef/yet-another-multi-select'
-//import {dropdownInput, dropdownCSS} from '@tashapiro/dropdown-input'
 
 overview = transpose(overview_)
 
@@ -82,158 +80,140 @@ boxes = displayConfig.map(displayBox)
 html`<div class="display-box-container">${boxes}</div>`
 ```
 
-:::: {layout="[ [1,1] ]"}
+
+```{ojs shared}
+//| output: false
+
+// earliest date included by the recency filter
+min_date = (days) => d3.utcDay.offset(d3.utcDay(new Date()), 1 - days)
+
+// overview data filtered by the recency dropdown, shared by both plots
+ovf = recency === null ? ov : ov.filter(d => d.date >= min_date(recency))
+
+// distinct count of a variable over some rows, skipping rows where it is
+// missing -- score is null for unscored runs, which would otherwise count as a
+// value of its own and add one to every group
+n_distinct = (rows, v) => new Set(rows.filter(d => d[v] !== null).map(d => d[v])).size
+
+// display label of the currently selected value of a dropdown
+opt_label = (opts, value) => [...opts].find(([label, v]) => v === value)[0]
+
+scheme = tol.QualMuted // color scheme
+default_color = scheme[1] // default color when there's no grouping variable
+plt_color = group_var || default_color // plot color variable
+
+// shown in place of a plot when the filters exclude everything
+no_data = () => html`<p class="filter-error"><i class="bi bi-exclamation-triangle"></i> No data selected</p>`
+```
+
+::::: {layout="[ [1,3,3] ]"}
+
+:::: {.panel-input}
+
+::: {.side-inputs}
+
+::: {.filters-container}
+
+```{ojs input-count}
+count_opts = new Map([["Assessments", "run_id_hash"], ["Scores", "score"], ["Participants", "user_id_hash"]])
+viewof count_var = Inputs.radio(count_opts, { label: "Count of", value: "run_id_hash" })
+```
+
+```{ojs input-group}
+group_opts = new Map([["Dataset", "dataset"], ["Team", "team"], ["Language", "language"], ["Task", "task_label"], ["None", null]])
+viewof group_var = Inputs.radio(group_opts, { label: "Grouped by", value: "language" })
+```
+
+```{ojs input-recency}
+recency_opts = new Map([["7 days", 7], ["30 days", 30], ["90 days", 90], ["365 days", 365], ["Anytime", null]])
+viewof recency = Inputs.radio(recency_opts, { label: "Collected within past", value: null })
+```
+
+:::
+:::
+::::
+
 ::: {.plot-container}
 ::: {.plot-inputs}
 
-```{ojs}
-x_var_opts = new Map([["Assessments", "run_id_hash"], ["Scores", "score"], ["Participants", "user_id_hash"]])
-viewof x_var = Inputs.select(x_var_opts, { label: "Count of" })
-```
-
-```{ojs}
-y_var_opts = new Map([["Team", "team"], ["Dataset", "dataset"], ["Language", "language"], ["Task", "task_label"]])
-viewof y_var = Inputs.select(y_var_opts, { label: "For each", value: "task_label" })
-```
-
-```{ojs}
-color_opts = new Map([["", null], ["Team", "team"], ["Dataset", "dataset"], ["Language", "language"], ["Task", "task_label"]])
-viewof color_var = Inputs.select(color_opts, { label: "Grouped by", value: "language" })
-```
-
-```{ojs}
-recency_opts = new Map([["Anytime", null], ["Past 7 days", 7], ["Past 30 days", 30], ["Past 90 days", 90], ["Past year", 365]])
-viewof bar_recency = Inputs.select(recency_opts, { label: "Collected in", value: null })
+```{ojs input-for-each}
+y_var_opts = new Map([["Dataset", "dataset"], ["Team", "team"], ["Language", "language"], ["Task", "task_label"]])
+viewof y_var = Inputs.radio(y_var_opts, { label: "For each", value: "task_label" })
 ```
 
 :::
 
-```{ojs}
-// earliest date included by the recency filter
-min_date = (days) => d3.utcDay.offset(d3.utcDay(new Date()), 1 - days)
-ovb = bar_recency === null ? ov : ov.filter(d => d.date >= min_date(bar_recency))
+```{ojs bar-plot}
+marginLeft = 140
 
-// indicator for whether any data matches selected filters
-b_found = ovb.length > 0
-// display error is no matches
-b_found ? html`<div></div>` : html`<p class="filter-error"><i class="bi bi-exclamation-triangle"></i> No data selected</p>`
-```
-
-```{ojs}
-scheme = tol.QualMuted // color scheme
-default_color = scheme[1] // default color when there's no color variable
-plt_color = color_var || default_color // plot color variable
-
-x_lab = x_var_opts.entries().filter(([k, v]) => v === x_var)
-y_lab = y_var_opts.entries().filter(([k, v]) => v === y_var)
-
-marginLeft = 160
-b_found ? Plot.plot({
+ovf.length === 0 ? no_data() : Plot.plot({
   style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
-  width: 0.5 * width,
+  width: 0.43 * width,
   marginLeft: marginLeft,
   marginTop: 10,
   marginBottom: 40,
-      //x: { grid: true },
-  x: { label: `${x_lab[0]} count`, axis: "bottom", line: true },
-  y: { label: y_lab[0], labelAnchor: "top", tickSize: 0, tickPadding: 2 },
+  x: { label: `${opt_label(count_opts, count_var)} count`, axis: "bottom", line: true },
+  y: { label: opt_label(y_var_opts, y_var), labelAnchor: "top", tickSize: 0, tickPadding: 2 },
   color: {
-    //domain: groups,
     range: scheme,
-    legend: color_var !== null,
+    legend: group_var !== null,
     marginLeft: marginLeft,
     className: "color-legend"
   },
   marks: [
-    Plot.barX(ovb, Plot.groupY(
-      { x: g => new Set(g.map(d => d[x_var])).size },
+    Plot.barX(ovf, Plot.groupY(
+      { x: g => n_distinct(g, count_var) },
       { y: y_var, fill: plt_color, sort: { y: "x", reverse: true, }, inset: 1 }
     )),
-    Plot.textX(ovb, Plot.stackX(Plot.groupY(
-      { x: g => new Set(g.map(d => d[x_var])).size, text: g => new Set(g.map(d => d[x_var])).size },
+    Plot.textX(ovf, Plot.stackX(Plot.groupY(
+      { x: g => n_distinct(g, count_var), text: g => n_distinct(g, count_var) },
       { y: y_var, z: plt_color, fill: "white" }
     ))),
   ]
-}) : html`<div style="height: 300px;"></div>`
+})
 ```
 
 :::
 
 ::: {.plot-container}
-
 ::: {.plot-inputs}
 
-```{ojs}
-hist_var_opts = new Map([["Assessments", "run_id_hash"], ["Scores", "score"]])
-viewof hist_var = Inputs.select(hist_var_opts, { label: "Count of" })
-```
-
-```{ojs}
-hist_bin_opts = new Map([["Age (years)", "age"], ["Date administered", "date"]])
-viewof hist_bin = Inputs.select(hist_bin_opts, { label: "Binned by" })
-```
-
-```{ojs}
-stack_var_opts = new Map([["", null], ["Team", "team"], ["Dataset", "dataset"], ["Language", "language"], ["Task", "task_label"]])
-viewof stack_var = Inputs.select(stack_var_opts, { label: "Grouped by", value: "language" })
-```
-
-```{ojs}
-viewof hist_recency = Inputs.select(recency_opts, { label: "Collected in", value: null })
+```{ojs input-binned-by}
+hist_bin_opts = new Map([["Age", "age"], ["Date administered", "date"]])
+viewof hist_bin = Inputs.radio(hist_bin_opts, { label: "Binned by", value: "age" })
 ```
 
 :::
 
-```{ojs}
-ovh = hist_recency === null ? ov : ov.filter(d => d.date >= min_date(hist_recency))
-
-// indicator for whether any data matches selected filters
-h_found = ovh.length > 0
-// display error is no matches
-h_found ? html`<div></div>` : html`<p class="filter-error"><i class="bi bi-exclamation-triangle"></i> No data selected</p>`
-```
-
-
-```{ojs}
-hist_x_lab = hist_bin_opts.entries().filter(([k, v]) => v === hist_bin)
-
-h_found ? Plot.plot({
-  style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
-  //width: 1000,
-  width: 0.5 * width,
-  height: 300,
-  marginTop: 20,
-  marginBottom: 50,
-  x: {
-    //domain: [3,12],
-    label: hist_x_lab[0],
-    line: true
-  },
-  y: {
-    label: "Count",
-  },
-  color: {
-    legend: true,
-    //domain: groups,
-    range: scheme,
-    //legend: stack_var !== null,
-    //marginLeft: marginLeft,
-    className: "color-legend"
-  },
-  marks: [
-    Plot.rectY(ovh.filter(d => d[hist_var] !== null), Plot.binX({y: "count"}, {
-      fill: stack_var || default_color,
-      x: {
-        //interval: hist_bin / 12,
-        value: hist_bin
-      }
-    })),
-  ]
-}) : html`<div></div>`
+```{ojs hist-plot}
+// a participant has one age and date per run, so there is no single value to
+// bin them by -- say so rather than plot something misleading
+count_var === "user_id_hash"
+  ? html`<p class="filter-error"><i class="bi bi-info-circle"></i> Participants can't be binned by age or date, since each participant has multiple assessments</p>`
+  : ovf.length === 0 ? no_data() : Plot.plot({
+      style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
+      width: 0.43 * width,
+      height: 300,
+      marginTop: 20,
+      marginBottom: 50,
+      x: { label: opt_label(hist_bin_opts, hist_bin), line: true },
+      y: { label: "Count" },
+      color: {
+        legend: group_var !== null,
+        range: scheme,
+        className: "color-legend"
+      },
+      marks: [
+        Plot.rectY(ovf, Plot.binX(
+          { y: g => n_distinct(g, count_var) },
+          { fill: plt_color, x: { value: hist_bin } }
+        )),
+      ]
+    })
 ```
 
 :::
-::::
+
+:::::
 
 ::::
-
