@@ -20,6 +20,14 @@ $primary: #f7ca69;
 
 //body { overflow: hidden; }
 
+// macos rubber-bands the document even when the content fits, so the page can
+// be "pulled" down and springs back. this stops the bounce while leaving real
+// scrolling intact for when the content is genuinely taller than the window
+html,
+body {
+  overscroll-behavior-y: none;
+}
+
 .observablehq--error {
   display: none;
 }
@@ -56,6 +64,15 @@ nav.border-bottom {
 
 #quarto-content >* {
   padding-top: 0;
+}
+
+// quarto's js sets an inline min-height of calc(100vh - 57px) on the content
+// block, allowing for the navbar -- but the block starts 72px down, so a page
+// whose content fits the window still scrolls by the 15px difference. there is
+// no footer to push down, so drop the minimum and let the content size itself.
+// !important because the inline style would otherwise win
+#quarto-content.quarto-container {
+  min-height: 0 !important;
 }
 
 main {
