@@ -1,13 +1,10 @@
-library(redivis)
-library(purrr)
-
 # connect to processed data overview workflow
-wf <- redivis$user("levante")$workflow("processed_data_overview:vvwv")
+wf <- redivis::redivis$user("levante")$workflow("levante_data_latest_overview:g51j")
 
 # update all workflow datasources to current version
 wf_ds <- wf$list_datasources()
-walk(wf_ds, \(ds) ds$get())
-walk(wf_ds, \(ds) ds$update(version = "current"))
+purrr::walk(wf_ds, \(ds) ds$get())
+purrr::walk(wf_ds, \(ds) ds$update(version = "current"))
 
-# run notebook that stacks scores into score_summary table
-wf$notebook("stack scores")$run()
+# run transform that populates score_summary table
+wf$transform("score_summary")$run()
