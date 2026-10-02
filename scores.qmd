@@ -396,7 +396,7 @@ dot_marks = Plot.marks(
     y: y_var,
     r: r_var,
     stroke: plt_color,
-    strokeOpacity: 0.5,
+    strokeOpacity: 0.25,
     fx: dot_facet.fx,
     fy: dot_facet.fy
   }),
@@ -512,9 +512,9 @@ scorePlot = scoresf.length === 0
       style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
       width: 1000,
        grid: true,
-          x: { line: true, domain: age_span, ticks: ages, tickFormat: d3.format(".0f") },
-          y: { line: true },
-          r: { transform: (s) => s ? 1/s : 1, range: [0, 4] }, // radius inversely proportional
+          x: { label: "Age (years)", line: true, domain: age_span, ticks: ages, tickFormat: d3.format(".0f") },
+          y: { label: "Score", line: true },
+          r: { transform: (s) => s ? 1/s : 1, range: [0, 3] }, // radius inversely proportional
       color: {
         domain: Object.keys(colors),
         range: Object.values(colors),
@@ -569,7 +569,7 @@ allowedDatasetNames = (ds) => {
   const datasets = ds.filter(d => accessLevels.includes(d.properties.accessLevel))
     .filter(d => d.properties.tableCount > 0)
     .map(d => d.name)
-    .filter(n => !n.match("-raw|-metadata-|-example"))
+    .filter(n => !n.match("-raw|-metadata-|-example|test-") && n !== defaultDataset)
     //.filter(n => n.match("processed") || extraDatasets.includes(n))
     .sort()
   return [defaultDataset, ...datasets]
