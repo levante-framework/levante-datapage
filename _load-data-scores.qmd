@@ -1,9 +1,9 @@
 ```{r load-scores}
 # load data from redivis
 user <- redivis::redivis$user("levante")
-workflow <- user$dataset("levante_data_pilots")
-overview <- workflow$table("scores")$to_tibble()
+dataset <- user$dataset("levante_data_pilots:68kn")
+scores <- dataset$table("scores:pgms")$to_tibble()
 
 # pass to OJS
-ojs_define(data = data)
+ojs_define(data = scores)
 ```
