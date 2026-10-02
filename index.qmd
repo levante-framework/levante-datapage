@@ -38,21 +38,26 @@ ov = overview.map(obj => ({
 
 ```{ojs diplay-vals}
 displayScheme = [
-  [204, 102, 119],
-  [221, 204, 119],
-  [153, 153,  51],
-  [ 68, 170, 153],
-  [136, 204, 238],
-  [170,  68, 153],
+  [204, 102, 119], // red
+  [221, 204, 119], // yellow
+  //[153, 153,  51], // yellow-green 17,119,51
+  [ 17, 119,  51], // green
+  [ 68, 170, 153], // teal
+  [136, 204, 238], // light blue
+  [ 51,  34, 136], // dark blue
+  [170,  68, 153], // magenta
 ]
+
+//['#CC6677', '#332288', '#DDCC77', '#117733', '#88CCEE','#882255', '#44AA99', '#999933', '#AA4499']
 
 displayConfig = ([
   { index: 0, property: "dataset",      label: "Datasets",     icon: "archive"        },
   { index: 1, property: "team",         label: "Teams",        icon: "geo"            },
   { index: 2, property: "language",     label: "Languages",    icon: "translate"      },
-  { index: 3, property: "task_id",    label: "Tasks",        icon: "ui-checks-grid" },
+  { index: 3, property: "task_id",      label: "Tasks",        icon: "ui-checks-grid" },
   { index: 4, property: "user_id_hash", label: "Participants", icon: "person-arms-up" },
-  { index: 5, property: "run_id_hash",  label: "Assessments",  icon: "clipboard-data" },
+  { index: 5, property: "score",        label: "Scores",       icon: "speedometer" },
+  { index: 6, property: "run_id_hash",  label: "Assessments",  icon: "clipboard-data" },
 ])
 
 displayBox = ({ index, property, label, icon }) => {
