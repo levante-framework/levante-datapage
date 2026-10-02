@@ -1,29 +1,8 @@
-```{r load-scores}
-library(redivis)
-library(glue)
-
-quarto <- yaml::read_yaml("_quarto.yml")
-
-# load locally cached data
-if ("mode" %in% names(quarto) && quarto$mode == "local") {
-  overview <- readr::read_rds(glue("data/score_summary.rds"))
-  
-  # load data from redivis table if specified in yaml
-} else {
-  user <- redivis$user("levante")
-  workflow <- user$workflow("processed_data_overview:vvwv")
-  overview <- workflow$table("score_summary:t262")$to_tibble() |>
-    tidyr::separate_wider_delim(redivis_source, delim = ":",
-                                names = c("name", "ref", "version")) |>
-    dplyr::mutate(raw_name = name,
-                  name = raw_name |> stringr::str_remove("_raw$")) |>
-    dplyr::mutate(team = team |> stringr::str_replace_all("_", "-"),
-                  dataset = dataset |> stringr::str_replace_all("_", "-"))
-
-  if ("mode" %in% names(quarto) && quarto$mode == "cache") {
-    readr::write_rds(overview, glue("data/score_summary.rds"))
-  }
-}
+```{r load-overview}
+# load data from redivis
+user <- redivis::redivis$user("levante")
+workflow <- user$workflow("levante_data_latest_overview:g51j")
+overview <- workflow$table("score_summary:ehg0")$to_tibble()
 
 # pass to OJS
 ojs_define(overview_ = overview)

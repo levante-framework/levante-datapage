@@ -27,13 +27,12 @@ task_info = ({
                      "swr": "Word Reading",
 })
 
-mutable dn = [{ name: "levante-data-pilots", ref: "48qk" }] // default datasource
 ov = overview.map(obj => ({
   ...obj,
   task_label: task_info[obj.task_id],
   date: d3.utcParse("%Y-%m-%d")(obj.date),
   score: obj.scored ? obj.run_id_hash : null
-})).filter(d => ds.includes(d.ref))
+}))
 ```
 
 
@@ -53,7 +52,7 @@ displayConfig = ([
   { index: 0, property: "dataset",      label: "Datasets",     icon: "archive"        },
   { index: 1, property: "team",         label: "Teams",        icon: "geo"            },
   { index: 2, property: "language",     label: "Languages",    icon: "translate"      },
-  { index: 3, property: "task_code",    label: "Tasks",        icon: "ui-checks-grid" },
+  { index: 3, property: "task_id",    label: "Tasks",        icon: "ui-checks-grid" },
   { index: 4, property: "user_id_hash", label: "Participants", icon: "person-arms-up" },
   { index: 5, property: "run_id_hash",  label: "Assessments",  icon: "clipboard-data" },
 ])
@@ -236,74 +235,5 @@ h_found ? Plot.plot({
 :::
 ::::
 
-:::: {layout="[ [1,1] ]"}
-::: {.panel-input}
-
-{{< bi shuffle >}} _Change data source..._
-
-::: {.side-inputs}
-
-::: {.info-text}
-_Note: To change data sources, you need a [Redivis](https://redivis.com) account. Click on the button below to log into your Redivis account and list the data sources that you have access to._
-:::
-
-::: {.filters-container}
-
-```{ojs}
-//| output: false
-
-dnf = dn.filter(d => overview.map(v => v.ref).includes(d.ref))
-ds_opts = dnf.map(d => ({ label: d.name.replace("-raw", ""), value: d.ref }))
-```
-
-```{ojs populate-datasource}
-// populates datasource selector -- first click should open redivis auth pop up
-viewof auth_button = Inputs.button("Populate data sources", {
-  reduce: async () => {
-    const ds = await getDatasets()
-    mutable dn = allowedDatasetNames(ds)
-  }
-})
-```
-
-```{ojs select-datasource}
-viewof ds = dropdownInput({
-  inputLabel: "",
-  inputId: "datasets",
-  placeholderText: 'Select...',
-  options: ds_opts,
-  selected: ds_opts.map(d => d.value),
-  width: "50%"
-})
-```
-
-:::
-:::
-:::
 ::::
 
-::::
-
-```{ojs redivis}
-//| output: false
-
-// load redivis
-redivis = require("redivis")
-
-// get references to all LEVANTE datasets (with "properties" populated)
-async function getDatasets() {
-  const ds = await redivis
-    .organization('LEVANTE')
-    .listDatasets()
-  return await Promise.all(ds.map(d => d.get()))
-}
-
-// filter datasets by authed user's access, extract their reference IDs
-allowedDatasetNames = (ds) => {
-  const accessLevels = ["data", "edit"]
-  return ds.filter(d => accessLevels.includes(d.properties.accessLevel))
-    .map(d => ({ name: d.properties.name, ref: d.properties.referenceId }))
-    .sort((a, b) => d3.ascending(a.name, b.name))
-    .filter(d => d.ref !== "48qk") // levante_data_pilots_raw
-}
-```

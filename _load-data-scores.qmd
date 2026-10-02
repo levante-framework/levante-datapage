@@ -1,36 +1,8 @@
 ```{r load-scores}
-library(redivis)
-library(glue)
-
-quarto <- yaml::read_yaml("_quarto.yml")
-
-# load locally cached data
-if ("mode" %in% names(quarto) && quarto$mode == "local") {
-  # data <- readr::read_rds("data/table_data.rds")
-  data <- readr::read_rds(glue("data/{quarto$redivis$dataset}.rds"))
-
-  # load data from redivis table if specified in yaml
-} else if ("redivis" %in% names(quarto) &&
-           all(c("user", "table") %in% names(quarto$redivis)) && # need user and table
-           any(c("dataset", "project") %in% names(quarto$redivis))) { # need dataset or project
-  user <- redivis$user(quarto$redivis$user)
-  # use dataset if provided, otherwise use project
-  if (!is.null(quarto$redivis$dataset)) {
-    dataset <- user$dataset(quarto$redivis$dataset)
-  } else if (!is.null(quarto$redivis$project)) {
-    dataset <- user$project(quarto$redivis$project)
-  }
-  
-  table <- dataset$table(quarto$redivis$table)
-  data <- table$to_tibble() #max_results = 1000)
-  
-  if ("mode" %in% names(quarto) && quarto$mode == "cache") {
-    readr::write_rds(data, glue("data/{quarto$redivis$dataset}.rds"))
-  }
-  
-} else {
-  data <- NULL
-}
+# load data from redivis
+user <- redivis::redivis$user("levante")
+workflow <- user$dataset("levante_data_pilots")
+overview <- workflow$table("scores")$to_tibble()
 
 # pass to OJS
 ojs_define(data = data)

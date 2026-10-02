@@ -31,10 +31,3 @@ execute:
   message: false
   warning: false
   error: false
-
-# mode: local
-# mode: cache
-redivis:
-  user: levante
-  dataset: levante-data-pilots
-  table: scores
