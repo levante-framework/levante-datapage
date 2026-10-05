@@ -27,5 +27,3 @@ contributes:
         sidebar-width: 0px
         body-width: 1200px
         margin-width: 0px
-      shortcodes:
-        - redivis.lua
