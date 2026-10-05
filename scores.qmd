@@ -79,7 +79,7 @@ mutable scores = prep_scores(initial_scores)
 // tip = include in tooltip? range = slider extent (if applicable)
 // note: filter property not actually used programmatically
 vi = ({
-  "age":           { label: "Age (years)",      filter: true,  tip: true,  range: [2, 16], value: [4, 12] },
+  "age":           { label: "Age (years)",      filter: true,  tip: true,  range: [2, 16], value: [4.5, 12] },
   "age_gap":       { label: "Age gap (months)", filter: true,  tip: false, range: [0, 24], value: [0, 24] },
   "date":          { label: "Date",             filter: true,  tip: false, range: dates, value: dates },
   "score":         { label: "Score",            filter: false, tip: true,  range: null    },
@@ -577,24 +577,26 @@ span = (x) => [Math.floor(d3.min(x)), Math.ceil(d3.max(x))]
 age_span = span(scoresf.map(d => d.age))
 ages = d3.range(age_span[0], age_span[1] + 1, 1)
 
-// plot scores!, or say so when the filters select nothing
+// plot scores, or say so when the filters select nothing
 scorePlot = scoresf.length === 0
   ? html`<p class="filter-error"><i class="bi bi-exclamation-triangle"></i> No data selected</p>`
   : Plot.plot({
-      style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
-      width: 1000,
-       grid: true,
-          x: { label: "Age (years)", line: true, domain: age_span, ticks: ages, tickFormat: d3.format(".0f") },
-          y: { label: "Score", line: true },
-          r: { transform: (s) => s ? 1/s : 1, range: [0, 2] }, // radius inversely proportional
-      color: {
-        domain: Object.keys(colors),
-        range: Object.values(colors),
-        legend: color_var !== null,
-        className: "color-legend"
-      },
-      facet: { axis: null }, // hide facet labels
-      marks: marks[plot_type] // use marks according to plot type (dot/line)
+          style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
+   marginBottom: 35,
+      insetLeft: 5,
+          width: 1000,
+           grid: true,
+              x: { label: "Age (years)", line: true, domain: age_span, ticks: ages, tickFormat: d3.format(".0f") },
+              y: { label: "Score", line: true },
+              r: { transform: (s) => s ? 1/s : 1, range: [0, 2] }, // radius inversely proportional
+          color: {
+            domain: Object.keys(colors),
+            range: Object.values(colors),
+            legend: color_var !== null,
+            className: "color-legend"
+          },
+          facet: { axis: null }, // hide facet labels
+          marks: marks[plot_type] // use marks according to plot type (dot/line)
     })
 ```
 
