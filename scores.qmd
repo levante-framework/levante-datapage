@@ -8,6 +8,7 @@
 ```{ojs prelims}
 //| output: false
 Plot = import("https://esm.sh/@observablehq/plot@0.6.17")
+regression = import("https://esm.sh/d3-regression@1")
 initial_scores = transpose(data)
 ```
 
@@ -333,7 +334,11 @@ opt_icons = ({
   "Adaptive": "speedometer",
   "Scoring method": "sliders",
   "Cross-sectional": "calendar3",
-  "Longitudinal": "graph-up"
+  "Longitudinal": "graph-up",
+  "Linear": "slash-lg",
+  "Loess": "bezier2",
+  "Overall": "dash-lg",
+  "By color": "palette"
 })
 
 // radio option rendered with its icon, falling back to text alone
@@ -342,6 +347,25 @@ icon_label = ([label]) => opt_icons[label]
   : html`<span>${label}</span>`
 
 viewof color_var = Inputs.radio(cat_vars, { value: "dataset", label: "Color", format: icon_label })
+```
+
+:::
+
+::: {.plot-inputs}
+```{ojs trend-type}
+// regression line type selector
+viewof trend_type = Inputs.radio(
+  new Map([["Linear", "linear"], ["Loess", "loess"]]),
+  {value: "linear", label: "Trend type", format: icon_label}
+)
+```
+
+```{ojs trend-group}
+// regression line grouping selector
+viewof trend_group = Inputs.radio(
+  new Map([["Overall", false], ["By color", true]]),
+  {value: false, label: "Trend group", format: icon_label}
+)
 ```
 :::
 
@@ -392,6 +416,41 @@ facet_wrap = (df, col, ncol) => {
     //text: Plot.text(keys, {fx, fy, frameAnchor: "top", fontWeight: "bold"})
   })
 }
+
+// minimum number of data points for a group to get a regression line
+trend_min_n = 30
+
+// data grouped by facet and (if by isn't null) by value of by, dropping groups
+// with fewer than trend_min_n points
+trend_groups = (df, by) => Array.from(
+  d3.group(df, (d) => d[f_var], (d) => by === null ? null : d[by]),
+  ([f_val, g_map]) => Array.from(g_map, ([g_val, points]) => ({ f_val, g_val, points }))
+).flat().filter(({ points }) => points.length >= trend_min_n)
+
+// loess curves for data, one per facet and (if by isn't null) per value of by
+loess_curves = (df, by) => trend_groups(df, by).map(
+  ({ f_val, g_val, points }) => regression.regressionLoess()
+    .x((d) => d[x_var])
+    .y((d) => d[y_var])
+    .bandwidth(0.75)(points) // same as default span of R's loess
+    .map(([x, y]) => ({ [f_var]: f_val, [by]: g_val, [x_var]: x, [y_var]: y }))
+).flat()
+
+// marks for regression lines, linear or loess, overall or per color group
+trend_marks = (df, facet) => {
+  const by = trend_group ? color_var : null
+  const opts = {
+    x: x_var,
+    y: y_var,
+    stroke: trend_group ? plt_color : "black",
+    strokeWidth: 2,
+    fx: facet.fx,
+    fy: facet.fy
+  }
+  return trend_type === "linear"
+    ? Plot.linearRegressionY(trend_groups(df, by).flatMap((g) => g.points), opts)
+    : Plot.line(loess_curves(df, by), opts)
+}
 ```
 
 ```{ojs score-plot-dots}
@@ -412,18 +471,12 @@ dot_marks = Plot.marks(
     y: y_var,
     r: r_var,
     stroke: plt_color,
-    strokeOpacity: 0.25,
+    strokeOpacity: 0.2,
     fx: dot_facet.fx,
     fy: dot_facet.fy
   }),
   // regression lines
-  Plot.linearRegressionY(scoresf, {
-    x: x_var,
-    y: y_var,
-    stroke: "black",
-    fx: dot_facet.fx,
-    fy: dot_facet.fy
-  }),
+  trend_marks(scoresf, dot_facet),
   // tooltips
   Plot.tip(scoresf, Plot.pointer({
     x: x_var,
@@ -489,17 +542,13 @@ line_marks = Plot.marks(
     y: y_var,
     z: z_var,
     stroke: plt_color,
+    strokeWidth: 1,
+    strokeOpacity: 0.5,
     fx: line_facet.fx,
     fy: line_facet.fy
   }),
   // regression lines
-  Plot.linearRegressionY(scoresl, {
-    x: x_var,
-    y: y_var,
-    stroke: "black",
-    fx: line_facet.fx,
-    fy: line_facet.fy
-  }),
+  trend_marks(scoresl, line_facet),
     // tooltips
   Plot.tip(line_summary, Plot.pointer({
     x: x_var,
@@ -536,7 +585,7 @@ scorePlot = scoresf.length === 0
        grid: true,
           x: { label: "Age (years)", line: true, domain: age_span, ticks: ages, tickFormat: d3.format(".0f") },
           y: { label: "Score", line: true },
-          r: { transform: (s) => s ? 1/s : 1, range: [0, 3] }, // radius inversely proportional
+          r: { transform: (s) => s ? 1/s : 1, range: [0, 2] }, // radius inversely proportional
       color: {
         domain: Object.keys(colors),
         range: Object.values(colors),
