@@ -486,7 +486,7 @@ dot_marks = Plot.marks(
     fx: dot_facet.fx,
     fy: dot_facet.fy,
     channels: dot_channels,
-    format: { fx: null, fy: null }
+    format: { x: null, y: null, fx: null, fy: null }
   }))
 )
 ```
