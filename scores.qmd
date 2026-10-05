@@ -392,8 +392,9 @@ color_vals = color_var === null ? [default_color] : tags[color_var].filter((v) =
 
 // domain: values + NA
 color_domain = [...color_vals, "NA"]
-// range: corresponding values from scheme + missing color
-color_range = [...scheme.slice(0, color_vals.length), unk_color]
+// range: corresponding values from scheme (cycling if there are more values
+// than colors) + missing color
+color_range = [...color_vals.map((v, i) => scheme[i % scheme.length]), unk_color]
 // map from domain to range
 color_map = color_domain.map((v, i) => [v, color_range[i]])
 // drop elements from map if values not in data
