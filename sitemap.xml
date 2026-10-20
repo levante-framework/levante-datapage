@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://levante-framework.github.io/levante-datapage/about.html</loc>
-    <lastmod>2026-10-19T03:05:27.835Z</lastmod>
+    <loc>https://levante-framework.github.io/levante-datapage/scores.html</loc>
+    <lastmod>2026-10-20T03:05:25.593Z</lastmod>
   </url>
   <url>
     <loc>https://levante-framework.github.io/levante-datapage/items.html</loc>
-    <lastmod>2026-10-19T03:05:27.841Z</lastmod>
-  </url>
-  <url>
-    <loc>https://levante-framework.github.io/levante-datapage/analysis.html</loc>
-    <lastmod>2026-10-19T03:05:27.835Z</lastmod>
-  </url>
-  <url>
-    <loc>https://levante-framework.github.io/levante-datapage/scores.html</loc>
-    <lastmod>2026-10-19T03:05:27.844Z</lastmod>
-  </url>
-  <url>
-    <loc>https://levante-framework.github.io/levante-datapage/index.html</loc>
-    <lastmod>2026-10-19T03:05:27.841Z</lastmod>
+    <lastmod>2026-10-20T03:05:25.588Z</lastmod>
   </url>
   <url>
     <loc>https://levante-framework.github.io/levante-datapage/data.html</loc>
-    <lastmod>2026-10-19T03:05:27.836Z</lastmod>
+    <lastmod>2026-10-20T03:05:25.582Z</lastmod>
+  </url>
+  <url>
+    <loc>https://levante-framework.github.io/levante-datapage/analysis.html</loc>
+    <lastmod>2026-10-20T03:05:25.581Z</lastmod>
+  </url>
+  <url>
+    <loc>https://levante-framework.github.io/levante-datapage/about.html</loc>
+    <lastmod>2026-10-20T03:05:25.581Z</lastmod>
+  </url>
+  <url>
+    <loc>https://levante-framework.github.io/levante-datapage/index.html</loc>
+    <lastmod>2026-10-20T03:05:25.588Z</lastmod>
   </url>
 </urlset>
