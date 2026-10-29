@@ -613,7 +613,7 @@ scorePlot = scoresf.length === 0
 //| output: false
 
 // load redivis
-redivis = require("redivis")
+redivis = import("https://cdn.jsdelivr.net/npm/redivis/+esm")
 
 // get scores table for a given dataset
 async function getScores(dataset) {
@@ -622,7 +622,7 @@ async function getScores(dataset) {
     .organization('LEVANTE')
     .dataset(dataset)
     .table('scores')
-    .listRows()
+    .toRowsArray({temporal: false})
   console.log('got scores')
   return rows;
 }
