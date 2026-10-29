@@ -19,6 +19,9 @@ website:
       - href: items.qmd
         text: Items
         icon: sliders
+      - href: psychometrics.qmd
+        text: Psychometrics
+        icon: rulers
 
 format:
   datapage-html:

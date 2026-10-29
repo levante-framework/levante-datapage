@@ -1,0 +1,120 @@
+{{< include components/_tol.qmd >}}
+{{< include components/_style.qmd >}}
+
+```{ojs prelims}
+//| output: false
+
+Plot = import("https://esm.sh/@observablehq/plot@0.6.17")
+
+task_info = ({
+    "hf": "Hearts & Flowers",
+   "sds": "Same & Different",
+    "mg": "Memory",
+  "math": "Math",
+"matrix": "Pattern Matching",
+  "mrot": "Shape Rotation",
+  "trog": "Sentence Understanding",
+ "vocab": "Vocabulary",
+   "tom": "Stories",
+    "pa": "Language Sounds",
+   "sre": "Sentence Reading",
+   "swr": "Word Reading",
+})
+
+stats_coded = stats
+  .map(d => ({...d, Task: task_info[d.task_code] }))
+  .sort((a, b) => {
+    const keysOrder = Object.keys(task_info);
+    return keysOrder.indexOf(a.task_code) - keysOrder.indexOf(b.task_code);
+  })
+```
+
+::: {.column-screen-inset}
+
+```{ojs}
+// shared options for all plots
+stats_opts = ({
+         style: { fontFamily: "var(--sans-serif)", fontSize: 12, overflow: "visible" },
+         width: 700,
+    marginLeft: 130,
+  marginBottom: 40,
+     insetLeft: 10,
+             y: { grid: true, label: null },
+             x: { line: true },
+             r: { label: "N", range: [1, 4] },
+         color: { scheme: "Spectral" }
+})
+
+tip_vars = ({ "Dataset": "dataset" })
+
+// reliability
+Plot.plot({
+  ...stats_opts,
+  x: { label: "Empirical reliability", line: true },
+  marks: [
+    Plot.dot(stats_coded, {
+      x: "empirical_rxx",
+      y: "Task",
+      stroke: "Task",
+      r: "n_scores",
+      sort: { y: "x", color: "x", reverse: true },
+      tip: true,
+      channels: tip_vars
+    })
+]
+})
+
+// age correlation
+Plot.plot({
+  ...stats_opts,
+  x: { label: "Age correlation", line: true },
+  marks: [
+    Plot.dot(stats_coded, {
+      x: "cor_score_age",
+      y: "Task",
+      stroke: "Task",
+      r: "n_scores",
+      sort: { y: "x", color: "x", reverse: true },
+      tip: true,
+      channels: tip_vars
+    })
+]
+})
+
+// test-retest correlation
+Plot.plot({
+  ...stats_opts,
+  x: { label: "Test-retest correlation", line: true },
+  marks: [
+    Plot.dot(stats_coded, {
+      x: "trt_1_2",
+      y: "Task",
+      stroke: "Task",
+      r: "n_1_2",
+      sort: { y: "x", color: "x", reverse: true },
+      tip: true,
+      channels: tip_vars
+    })
+]
+})
+```
+
+:::
+
+```{ojs redivis}
+redivis = import("https://cdn.jsdelivr.net/npm/redivis/+esm")
+
+// get stats table from workflow
+async function getStats() {
+  console.log('getting stats')
+  const rows = await redivis
+    .user('mikabr')
+    .workflow('levante_data_latest_psychometrics:xhxj')
+    .table('task_x_dataset_combined:h9gb')
+    .toRowsArray()
+  console.log('got stats')
+  return rows;
+}
+
+stats = await getStats()
+```
