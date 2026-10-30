@@ -172,10 +172,52 @@ y_var_opts = new Map([["Dataset", "dataset"], ["Team", "team"], ["Language", "la
 viewof y_var = Inputs.radio(y_var_opts, { label: "For each", value: "task_label", format: icon_label })
 ```
 
+```{ojs input-bar-scale}
+bar_scale_opts = new Map([["Linear", "linear"], ["Log", "log"]])
+viewof bar_scale = Inputs.radio(bar_scale_opts, { label: "Scale", value: "linear", format: icon_label })
+```
+
 :::
 
 ```{ojs bar-plot}
 marginLeft = 152
+
+// on the log scale, each bar's total length is log-transformed and then split
+// among its groups in proportion to their counts, so segment widths still show
+// each group's share (transforming the stack boundaries directly would shrink
+// later segments). the transform is symlog's, log(1 + x), so 0 stays at 0
+bar_log = bar_scale === "log"
+bar_tf = x => Math.log1p(x)
+bar_tf_inv = t => Math.round(Math.expm1(t))
+// distinct counts for each bar segment (y value x group value)
+bar_counts = d3.flatRollup(ovf, g => n_distinct(g, count_var), d => d[y_var], d => d[group_var])
+bar_totals = d3.rollup(bar_counts, g => d3.sum(g, d => d[2]), d => d[0])
+// factor turning a group's count into its segment length within bar y
+bar_k = y => bar_log ? bar_tf(bar_totals.get(y)) / bar_totals.get(y) : 1
+bar_data = bar_counts.map(([y, group, n]) => ({ y, group, n, len: n * bar_k(y) }))
+
+// log scale ticks at powers of 10 up to the largest total, placed at their
+// transformed positions but labelled with the untransformed values
+bar_ticks = bar_log
+  ? [0, ...d3.range(Math.floor(Math.log10(d3.max(bar_totals.values()))) + 1).map(i => 10 ** i)]
+  : undefined
+
+// render function for the count labels that replaces those wider than their
+// bar segment (less the bars' 1px inset on each side and some padding) with a
+// placeholder, and drops them if the placeholder doesn't fit either
+fitting_labels = {
+  const ctx = document.createElement("canvas").getContext("2d")
+  ctx.font = `12px ${getComputedStyle(document.body).getPropertyValue("--sans-serif")}`
+  const placeholder = "⋯"
+  return (index, scales, values, dimensions, context, next) => {
+    const fits = (s, i) => ctx.measureText(s).width + 10 <= scales.x(bar_data[i].len) - scales.x(0)
+    const text = Array.from(values.text, (n, i) => {
+      const s = n.toLocaleString("en-US")
+      return fits(s, i) ? s : fits(placeholder, i) ? placeholder : null
+    })
+    return next(index.filter(i => text[i] !== null), scales, { ...values, text }, dimensions, context)
+  }
+}
 
 ovf.length === 0 ? no_data() : Plot.plot({
   style: { fontFamily: "var(--sans-serif)", fontSize: 12 },
@@ -183,23 +225,31 @@ ovf.length === 0 ? no_data() : Plot.plot({
   marginLeft: marginLeft,
   marginTop: 10,
   marginBottom: 40,
-  x: { label: `${opt_label(count_opts, count_var)} count`, axis: "bottom", line: true },
+  // segment boundaries don't line up with the axis on the log scale
+  caption: bar_log && group_var !== null
+    ? html`<span class="source"><i class="bi bi-info-circle opt-icon"></i>Bar lengths are on a log scale, divided proportionally by group counts, so only ends line up with the x axis.</span>`
+    : undefined,
+  x: { label: `${opt_label(count_opts, count_var)} count`, axis: "bottom", line: true,
+       ticks: bar_ticks?.map(bar_tf), tickFormat: bar_log ? t => bar_tf_inv(t).toLocaleString("en-US") : undefined },
   y: { label: opt_label(y_var_opts, y_var), labelAnchor: "top", tickSize: 0, tickPadding: 2 },
   color: {
     range: scheme,
     legend: group_var !== null,
+    label: group_var === null ? null : opt_label(group_opts, group_var),
     marginLeft: marginLeft,
     className: "color-legend"
   },
   marks: [
-    Plot.barX(ovf, Plot.groupY(
-      { x: g => n_distinct(g, count_var) },
-      { y: y_var, fill: plt_color, sort: { y: "x", reverse: true, }, inset: 1 }
-    )),
-    Plot.textX(ovf, Plot.stackX(Plot.groupY(
-      { x: g => n_distinct(g, count_var), text: g => n_distinct(g, count_var) },
-      { y: y_var, z: plt_color, fill: "white" }
-    ))),
+    Plot.barX(bar_data, Plot.stackX({
+      x: "len", y: "y", fill: group_var === null ? default_color : "group",
+      sort: { y: "x", reverse: true }, inset: 1,
+      channels: { [opt_label(count_opts, count_var)]: "n" },
+      tip: { format: { x: false } }
+    })),
+    Plot.textX(bar_data, Plot.stackX({
+      x: "len", y: "y", z: "group", text: "n", fill: "white",
+      render: fitting_labels
+    })),
   ]
 })
 ```
