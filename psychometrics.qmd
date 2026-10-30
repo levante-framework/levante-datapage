@@ -39,7 +39,7 @@ stats_opts = ({
     marginLeft: 130,
   marginBottom: 40,
      insetLeft: 10,
-             y: { grid: true, label: null },
+             y: { grid: true, label: null, tickSize: 0, tickPadding: 2 },
              x: { line: true },
              r: { label: "N", range: [1, 4] },
          color: { scheme: "Spectral" }
@@ -102,11 +102,15 @@ Plot.plot({
 :::
 
 ```{ojs redivis}
-redivis = import("https://cdn.jsdelivr.net/npm/redivis/+esm")
+redivis = import("https://cdn.jsdelivr.net/npm/redivis@0.4.2/+esm")
 
 // get stats table from workflow
 async function getStats() {
   console.log('getting stats')
+  // sign in with workflow read access up front -- the browser client otherwise
+  // signs in with only data access, and then makes the user sign in again when
+  // the workflow table request is rejected for its scope
+  await redivis.authorize({ scope: 'workflow.read' })
   const rows = await redivis
     .user('mikabr')
     .workflow('levante_data_latest_psychometrics:xhxj')

@@ -613,7 +613,7 @@ scorePlot = scoresf.length === 0
 //| output: false
 
 // load redivis
-redivis = import("https://cdn.jsdelivr.net/npm/redivis/+esm")
+redivis = import("https://cdn.jsdelivr.net/npm/redivis@0.4.2/+esm")
 
 // get scores table for a given dataset
 async function getScores(dataset) {
