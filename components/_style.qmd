@@ -47,6 +47,43 @@ html`<style>
     border: none;
   }
   
+  /* wide enough for 3-4 digit values, which the shrink above would cut off */
+  .plot-inputs .${ns} div input[type="number"] {
+    flex-shrink: 0;
+    width: 4.5em;
+  }
+
+  /* single ended sliders, styled to match the double ended ones in _interval:
+     the track is filled up to the thumb centre, given by --fill (0 to 1), which
+     has to be set from js since browsers other than firefox have no fill element */
+  .plot-inputs .${ns} input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 7px;
+    border-radius: 4px;
+    --fill-px: calc(7.5px + var(--fill, 0) * (100% - 15px));
+    background: linear-gradient(to right, #f7ca69 var(--fill-px), hsl(0, 0%, 80%) var(--fill-px));
+  }
+  .plot-inputs .${ns} input[type="range"]::-moz-range-track {
+    background: transparent;
+  }
+  .plot-inputs .${ns} input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 15px;
+    height: 15px;
+    border-radius: 100%;
+    background: #fcfcfc;
+    border: 1px solid hsl(0, 0%, 55%);
+  }
+  .plot-inputs .${ns} input[type="range"]::-moz-range-thumb {
+    box-sizing: border-box;
+    width: 15px;
+    height: 15px;
+    border-radius: 100%;
+    background: #fcfcfc;
+    border: 1px solid hsl(0, 0%, 55%);
+  }
+
   .${ns} select {
     background-color: #f4f4f4;
     border: none;

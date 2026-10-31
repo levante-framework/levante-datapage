@@ -23,75 +23,110 @@ task_info = ({
 
 stats_coded = stats
   .map(d => ({...d, Task: task_info[d.task_code] }))
-  .sort((a, b) => {
-    const keysOrder = Object.keys(task_info);
-    return keysOrder.indexOf(a.task_code) - keysOrder.indexOf(b.task_code);
-  })
 ```
 
 ::: {.column-screen-inset}
 
-```{ojs}
+```{ojs plot-opts}
+//| output: false
+
 // shared options for all plots
 stats_opts = ({
          style: { fontFamily: "var(--sans-serif)", fontSize: 12, overflow: "visible" },
-         width: 700,
+         width: 0.45 * width,
     marginLeft: 130,
   marginBottom: 40,
      insetLeft: 10,
-             y: { grid: true, label: null, tickSize: 0, tickPadding: 2 },
+             y: { grid: true, label: null, tickSize: 0, tickPadding: 2, domain: task_order },
              x: { line: true },
              r: { label: "N", range: [1, 4] },
-         color: { scheme: "Spectral" }
+         color: { scheme: "Turbo", domain: task_order, reverse: true }
 })
 
 tip_vars = ({ "Dataset": "dataset" })
 
+// slider for the minimum value of a sample size variable
+min_n_input = (label) => {
+  const form = Inputs.range([0, 300], { label: label, step: 1, value: 30 })
+  // set how far to fill the slider track (see _style)
+  const range = form.querySelector("input[type=range]")
+  const fill = () => range.style.setProperty("--fill", (range.valueAsNumber - range.min) / (range.max - range.min))
+  form.addEventListener("input", fill)
+  fill()
+  return form
+}
+```
+
+::: {.plot-inputs}
+
+```{ojs input-min-n-scores}
+viewof min_n_scores = min_n_input("Min N scores")
+```
+
+:::
+
+```{ojs filter-n-scores}
+//| output: false
+stats_n_scores = stats_coded.filter(d => d.n_scores >= min_n_scores)
+
+// order of tasks for every plot's y axis and colors -- by highest reliability,
+// with tasks that have none last
+task_order = d3.groupSort(stats_coded,
+  g => -(d3.max(g, d => d.empirical_rxx) ?? -Infinity),
+  d => d.Task)
+```
+
+::: {layout="[ [1,1] ]"}
+
+```{ojs plot-reliability}
 // reliability
 Plot.plot({
   ...stats_opts,
-  x: { label: "Empirical reliability", line: true },
+  x: { label: "Empirical reliability", line: true, domain: [0, 1] },
   marks: [
-    Plot.dot(stats_coded, {
+    Plot.dot(stats_n_scores, {
       x: "empirical_rxx",
       y: "Task",
       stroke: "Task",
       r: "n_scores",
-      sort: { y: "x", color: "x", reverse: true },
       tip: true,
       channels: tip_vars
     })
 ]
 })
+```
 
+```{ojs plot-age}
 // age correlation
 Plot.plot({
   ...stats_opts,
   x: { label: "Age correlation", line: true },
   marks: [
-    Plot.dot(stats_coded, {
+    Plot.dot(stats_n_scores, {
       x: "cor_score_age",
       y: "Task",
       stroke: "Task",
       r: "n_scores",
-      sort: { y: "x", color: "x", reverse: true },
       tip: true,
       channels: tip_vars
     })
 ]
 })
+```
 
+:::
+
+```{ojs plot-retest}
 // test-retest correlation
 Plot.plot({
   ...stats_opts,
   x: { label: "Test-retest correlation", line: true },
   marks: [
-    Plot.dot(stats_coded, {
+    Plot.dot(stats_coded.filter(d => d.n_1_2 >= min_n_scores), {
       x: "trt_1_2",
       y: "Task",
       stroke: "Task",
       r: "n_1_2",
-      sort: { y: "x", color: "x", reverse: true },
       tip: true,
       channels: tip_vars
     })
