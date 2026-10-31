@@ -2,6 +2,7 @@
 {{< include components/_style.qmd >}}
 {{< include components/_tol.qmd >}}
 {{< include components/_dropdown-input.qmd >}}
+{{< include components/_url-state.qmd >}}
 
 ```{ojs prelims}
 //| output: false
@@ -147,17 +148,17 @@ no_data = () => html`<p class="filter-error"><i class="bi bi-exclamation-triangl
 
 ```{ojs input-count}
 count_opts = new Map([["Assessments", "run_id_hash"], ["Scores", "score"], ["Participants", "user_id_hash"]])
-viewof count_var = Inputs.radio(count_opts, { label: "Count of", value: "run_id_hash", format: icon_label })
+viewof count_var = url_bound("count", Inputs.radio(count_opts, { label: "Count of", value: "run_id_hash", format: icon_label }), { choices: count_opts })
 ```
 
 ```{ojs input-group}
 group_opts = new Map([["Dataset", "dataset"], ["Team", "team"], ["Language", "language"], ["Task", "task_label"], ["None", null]])
-viewof group_var = Inputs.radio(group_opts, { label: "Grouped by", value: "language", format: icon_label })
+viewof group_var = url_bound("group", Inputs.radio(group_opts, { label: "Grouped by", value: "language", format: icon_label }), { choices: group_opts })
 ```
 
 ```{ojs input-recency}
 recency_opts = new Map([["7 days", 7], ["30 days", 30], ["90 days", 90], ["365 days", 365], ["Anytime", null]])
-viewof recency = Inputs.radio(recency_opts, { label: "Collected within past", value: null, format: icon_label })
+viewof recency = url_bound("recency", Inputs.radio(recency_opts, { label: "Collected within past", value: null, format: icon_label }), { choices: recency_opts })
 ```
 
 :::
@@ -169,12 +170,12 @@ viewof recency = Inputs.radio(recency_opts, { label: "Collected within past", va
 
 ```{ojs input-for-each}
 y_var_opts = new Map([["Dataset", "dataset"], ["Team", "team"], ["Language", "language"], ["Task", "task_label"]])
-viewof y_var = Inputs.radio(y_var_opts, { label: "For each", value: "task_label", format: icon_label })
+viewof y_var = url_bound("y", Inputs.radio(y_var_opts, { label: "For each", value: "task_label", format: icon_label }), { choices: y_var_opts })
 ```
 
 ```{ojs input-bar-scale}
 bar_scale_opts = new Map([["Linear", "linear"], ["Log", "log"]])
-viewof bar_scale = Inputs.radio(bar_scale_opts, { label: "Scale", value: "linear", format: icon_label })
+viewof bar_scale = url_bound("scale", Inputs.radio(bar_scale_opts, { label: "Scale", value: "linear", format: icon_label }), { choices: bar_scale_opts })
 ```
 
 :::
@@ -261,7 +262,7 @@ ovf.length === 0 ? no_data() : Plot.plot({
 
 ```{ojs input-binned-by}
 hist_bin_opts = new Map([["Age", "age"], ["Date administered", "date"]])
-viewof hist_bin = Inputs.radio(hist_bin_opts, { label: "Binned by", value: "age", format: icon_label })
+viewof hist_bin = url_bound("bin", Inputs.radio(hist_bin_opts, { label: "Binned by", value: "age", format: icon_label }), { choices: hist_bin_opts })
 ```
 
 :::

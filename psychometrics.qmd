@@ -1,5 +1,6 @@
 {{< include components/_tol.qmd >}}
 {{< include components/_style.qmd >}}
+{{< include components/_url-state.qmd >}}
 
 ```{ojs prelims}
 //| output: false
@@ -60,7 +61,7 @@ min_n_input = (label) => {
 ::: {.plot-inputs}
 
 ```{ojs input-min-n-scores}
-viewof min_n_scores = min_n_input("Min N scores")
+viewof min_n_scores = url_bound("min_n", min_n_input("Min N scores"))
 ```
 
 :::

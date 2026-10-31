@@ -2,6 +2,7 @@
 
 {{< include components/_tol.qmd >}}
 {{< include components/_style.qmd >}}
+{{< include components/_url-state.qmd >}}
 
 ```{ojs prelims}
 //| output: false
@@ -21,7 +22,7 @@ tasks = d3.group(items_coded, d => d.task_label)
 ::: {.column-screen-inset}
 
 ```{ojs task}
-viewof task_items = Inputs.select(tasks, { label: "Task", value: tasks.get("Math") })
+viewof task_items = url_bound("task", Inputs.select(tasks, { label: "Task", value: tasks.get("Math") }), { choices: tasks })
 ```
 
 ```{ojs data-prep}

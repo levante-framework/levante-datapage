@@ -1,0 +1,39 @@
+```{ojs _url-state}
+//| output: false
+
+// keeps an input's value in a URL parameter, so that links to the page can
+// share its state. on creation the input is set from the parameter (if valid),
+// and the parameter is updated whenever the input changes, with it left out
+// when the input is at its default value
+//
+// choices: Map of option labels to values for radio/select inputs, which are
+// stored by label (their values can be null or data); otherwise the value is
+// stored as a number
+url_bound = (key, input, { choices } = {}) => {
+  const encode = choices
+    ? v => [...choices].find(([label, value]) => value === v)?.[0]
+    : v => String(v)
+  const decode = choices
+    ? s => choices.has(s) ? { value: choices.get(s) } : null
+    : s => s !== "" && Number.isFinite(+s) ? { value: +s } : null
+
+  const default_param = encode(input.value)
+  const param = new URLSearchParams(location.search).get(key)
+  const decoded = param === null ? null : decode(param)
+  if (decoded !== null) {
+    input.value = decoded.value
+    // the value setter alone is silent, so let the input's own listeners (e.g.
+    // slider fill) know
+    input.dispatchEvent(new Event("input", { bubbles: true }))
+  }
+
+  input.addEventListener("input", () => {
+    const url = new URL(location.href)
+    const p = encode(input.value)
+    if (p === undefined || p === default_param) url.searchParams.delete(key)
+    else url.searchParams.set(key, p)
+    history.replaceState(history.state, "", url)
+  })
+  return input
+}
+```
