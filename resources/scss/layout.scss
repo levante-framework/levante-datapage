@@ -53,11 +53,39 @@ form > label, .label:has(+ .form) {
   }
 }
 
+// notes under the psychometrics plots: larger than other info text since they're
+// longer, with their several paragraphs spaced out
+.stats-note .info-text {
+  font-size: 0.75rem;
+}
+
+.stats-note .info-text p {
+  margin-bottom: 0.5em;
+}
+
 .plot-container {
   display: flex;
   flex-direction: column;
   align-items: left;
   row-gap: .5em;
+}
+
+// the psychometrics page hides everything but its loading message until its
+// data is loaded (when it gets the class loaded)
+.stats-page:not(.loaded) > :not(.stats-loading) {
+  display: none;
+}
+
+.stats-page.loaded > .stats-loading {
+  display: none;
+}
+
+// plots side by side where only some have inputs above them: fill the row's
+// height and sit at its bottom, so that the plots line up (important since
+// quarto sets justify-content inline on layout cells)
+.plot-container.plot-bottom {
+  align-self: stretch;
+  justify-content: flex-end !important;
 }
 
 .plot-inputs {
@@ -85,6 +113,15 @@ form > label, .label:has(+ .form) {
 
 div[id^='O-scope-']{
   flex-wrap: wrap !important;
+}
+
+// plot titles on the psychometrics page, which otherwise get page heading styles
+.stats-plot-figure h2 {
+  font-size: 1rem;
+  font-weight: bold;
+  border-bottom: none;
+  margin: 0;
+  padding: 0;
 }
 
 .filter-error { 

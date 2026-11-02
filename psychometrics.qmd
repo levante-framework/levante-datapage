@@ -1,3 +1,4 @@
+{{< include components/_interval.qmd >}}
 {{< include components/_tol.qmd >}}
 {{< include components/_style.qmd >}}
 {{< include components/_url-state.qmd >}}
@@ -22,29 +23,205 @@ task_info = ({
    "swr": "Word Reading",
 })
 
-stats_coded = stats
-  .map(d => ({...d, Task: task_info[d.task_code] }))
+// scored runs
+runs = scores
+  .filter(d => d.score != null)
+  .map(d => ({ ...d, date: d3.isoParse(d.time_started) }))
+
+// sd of all scores from each scoring model (of each task), regardless of the
+// inputs, to put age slopes in sds per year (as in the tasks paper)
+score_sds = d3.rollup(runs, g => d3.deviation(g, d => d.score),
+                      d => d.task_id, d => d.task_code, d => d.scoring_model)
+
+// consecutive pairs of each child's runs on a task, with the gap between them
+// in months, and which of the child's runs they are (e.g. "1-2"). tasks are
+// grouped by both task_id and task_code since they disagree for a few runs
+pairs = d3.flatGroup(runs, d => d.dataset, d => d.user_id, d => d.task_id, d => d.task_code)
+  .flatMap(([dataset, user_id, task_id, task_code, g]) =>
+    d3.pairs(d3.sort(g, d => d.date)).map(([a, b], i) => ({
+      dataset, task_id, task_code,
+      score_1: a.score, score_2: b.score, age_1: a.age,
+      gap: (b.date - a.date) / (864e5 * 365.25 / 12),
+      runs: `${i + 1}-${i + 2}`
+    })))
+
+// pearson correlation of two arrays
+cor = (x, y) => {
+  const mx = d3.mean(x), my = d3.mean(y)
+  const sxy = d3.sum(x, (xi, i) => (xi - mx) * (y[i] - my))
+  return sxy / Math.sqrt(d3.sum(x, xi => (xi - mx) ** 2) * d3.sum(y, yi => (yi - my) ** 2))
+}
+
+// 95% confidence interval of a correlation r over n observations, via fisher's z
+cor_ci = (r, n) => {
+  if (!(n > 3)) return [NaN, NaN]
+  const z = Math.atanh(r), h = 1.96 / Math.sqrt(n - 3)
+  return [Math.tanh(z - h), Math.tanh(z + h)]
+}
+
+// empirical reliability = var(score) / (var(score) + mean(se^2)), from arrays
+// of scores and squared ses
+rxx = (s, e2) => { const v = d3.variance(s); return v / (v + d3.mean(e2)) }
+
+// 95% percentile bootstrap interval of empirical reliability, resampling runs
+// (written out with typed arrays since it runs for every group on every change)
+rxx_ci = (s, e2, rand, B = 500) => {
+  const n = s.length
+  if (n < 2 || e2.some(isNaN)) return [NaN, NaN]
+  const out = new Float64Array(B)
+  for (let b = 0; b < B; b++) {
+    let sum = 0, sum2 = 0, sum_e2 = 0
+    for (let i = 0; i < n; i++) {
+      const j = Math.floor(rand() * n)
+      sum += s[j]; sum2 += s[j] ** 2; sum_e2 += e2[j]
+    }
+    const v = (sum2 - sum ** 2 / n) / (n - 1)
+    out[b] = v / (v + sum_e2 / n)
+  }
+  return [d3.quantile(out, 0.025), d3.quantile(out, 0.975)]
+}
+
+// least squares slope of y on x and its standard error
+ols_slope = (x, y) => {
+  const n = x.length, mx = d3.mean(x), my = d3.mean(y)
+  const sxx = d3.sum(x, xi => (xi - mx) ** 2)
+  const b = d3.sum(x, (xi, i) => (xi - mx) * (y[i] - my)) / sxx
+  const ss_res = d3.sum(x, (xi, i) => (y[i] - my - b * (xi - mx)) ** 2)
+  return { b, se: Math.sqrt(ss_res / (n - 2) / sxx) }
+}
+
+// reliability, age correlation, and age slope, with 95% intervals, for each
+// dataset x task x scoring model. the bootstrap's random numbers are seeded, so that the same
+// inputs always give the same intervals
+score_stats = (rs) => {
+  const rand = d3.randomLcg(42)
+  return d3.flatRollup(rs, g => {
+    const s = Float64Array.from(g, d => d.score)
+    const e2 = Float64Array.from(g, d => d.score_se == null ? NaN : d.score_se ** 2)
+    const r_age = cor(g.map(d => d.score), g.map(d => d.age))
+    const [rxx_lo, rxx_hi] = rxx_ci(s, e2, rand)
+    const [age_lo, age_hi] = cor_ci(r_age, g.length)
+    // slope of scores in sds of their scoring model's scores, with normal interval
+    const { task_id, task_code, scoring_model } = g[0]
+    const sd = score_sds.get(task_id).get(task_code).get(scoring_model)
+    const { b, se } = ols_slope(g.map(d => d.age), g.map(d => d.score / sd))
+    return {
+      n_scores: g.length,
+      empirical_rxx: rxx(s, e2), rxx_lo, rxx_hi,
+      cor_score_age: r_age, age_lo, age_hi,
+      slope_age: b, slope_se: se, slope_lo: b - 1.96 * se, slope_hi: b + 1.96 * se,
+      age_sd: d3.deviation(g, d => d.age)
+    }
+  }, d => d.dataset, d => d.task_id, d => d.task_code, d => d.scoring_model)
+  .map(([dataset, task_id, task_code, scoring_model, s]) => ({ dataset, task_id, task_code, scoring_model, ...s, Task: task_info[task_code] }))
+}
+
+// test-retest correlation, with 95% interval, for each dataset x task
+retest_stats = (ps) => d3.flatRollup(ps, g => {
+    const trt = cor(g.map(d => d.score_1), g.map(d => d.score_2))
+    const [trt_lo, trt_hi] = cor_ci(trt, g.length)
+    return { n_pairs: g.length, trt, trt_lo, trt_hi, gap_median: d3.median(g, d => d.gap) }
+  }, d => d.dataset, d => d.task_id, d => d.task_code)
+  .map(([dataset, task_id, task_code, s]) => ({ dataset, task_id, task_code, ...s, Task: task_info[task_code] }))
+
+// weighted average of a statistic over the datasets shown for each task -- for
+// correlations, averaged as fisher's z (with weights n - 3, this is a fixed
+// effect meta-analysis)
+pooled = (rows, x, weight, { fisher = false } = {}) => d3.flatRollup(
+  rows.filter(d => Number.isFinite(d[x]) && weight(d) > 0),
+  g => {
+    const w = g.map(weight)
+    const v = g.map(d => fisher ? Math.atanh(d[x]) : d[x])
+    const m = d3.sum(v, (vi, i) => vi * w[i]) / d3.sum(w)
+    return fisher ? Math.tanh(m) : m
+  }, d => d.Task)
+  .map(([Task, value]) => ({ Task, value }))
+
+// order of tasks for every plot's y axis and colors -- by highest reliability
+// over all runs (so that it doesn't change with the inputs), with tasks that
+// have none last
+task_order = d3.groupSort(score_stats(runs),
+  g => -(d3.max(g, d => d.empirical_rxx) ?? -Infinity),
+  d => d.Task)
 ```
 
-::: {.column-screen-inset}
+::: {.column-screen-inset .stats-page}
+
+::: {.stats-loading}
+<span class="spinner-border spinner-border-sm" role="status"></span> Loading data from Redivis (sign in if prompted)...
+:::
+
+```{ojs page-status}
+//| output: false
+// show the page's inputs and plots only once the data is loaded (see
+// layout.scss), and say why if it couldn't be
+data_load.promise.then(
+  () => document.querySelector(".stats-page").classList.add("loaded"),
+  (e) => {
+    document.querySelector(".stats-loading").textContent = `Couldn't load data from Redivis: ${e.message}`
+  })
+```
+
+```{ojs data-version}
+// which version of the data the page is showing, since it always loads the latest
+html`<p class="info-text">Data: <a href="${data.dataset.url}">levante_data_latest</a> ${data.dataset.version?.tag ?? ""}, loaded ${d3.timeFormat("%Y-%m-%d %H:%M")(data.loaded)}</p>`
+```
 
 ```{ojs plot-opts}
 //| output: false
 
 // shared options for all plots
 stats_opts = ({
+     className: "stats-plot", // figure gets class stats-plot-figure (see layout.scss)
          style: { fontFamily: "var(--sans-serif)", fontSize: 12, overflow: "visible" },
-         width: 0.45 * width,
+         width: 0.4 * width,
     marginLeft: 130,
+     marginTop: 5,
   marginBottom: 40,
      insetLeft: 10,
              y: { grid: true, label: null, tickSize: 0, tickPadding: 2, domain: task_order },
              x: { line: true },
-             r: { label: "N", range: [1, 4] },
+             r: { label: "N", range: [1, 5] },
          color: { scheme: "Turbo", domain: task_order, reverse: true }
 })
 
-tip_vars = ({ "Dataset": "dataset" })
+// tooltip formats and extra channels
+fmt = d3.format(".2f")
+tip_opts = ({ format: { x: ".2f", stroke: false } })
+ci_channel = (lo, hi) => ({ label: "95% CI", value: d => `[${fmt(d[lo])}, ${fmt(d[hi])}]` })
+// short label for a scoring model, e.g. "multigroup_dataset_all_items_rasch_f1_scalar"
+// -> "multigroup Rasch", "by_language_es-CO_rasch_f1" -> "es-CO Rasch" (and
+// anything that doesn't match that pattern as is)
+model_label = (m) => {
+  if (m == null) return "not IRT"
+  const match = m.match(/^(?:(multigroup)|by_language_([^_]+))_.*?(rasch|2pl)_/)
+  if (!match) return m
+  const [, multigroup, language, itemtype] = match
+  return `${multigroup ?? language} ${itemtype === "rasch" ? "Rasch" : "2PL"}`
+}
+
+score_channels = ({
+  "Dataset": "dataset",
+  "Scoring model": { value: d => model_label(d.scoring_model), label: "Scoring model" },
+  "Age SD (years)": { value: d => fmt(d.age_sd), label: "Age SD (years)" }
+})
+
+// marks for a statistic shared by the plots: a 95% interval line and a dot for
+// each dataset, and a tick for the average across datasets of each task
+stat_marks = (rows, { x, lo, hi, n, weight, channels, fisher }) => [
+  Plot.ruleY(rows, { y: "Task", x1: lo, x2: hi, stroke: "Task", strokeOpacity: 0.35 }),
+  Plot.dot(rows, {
+    x, y: "Task", stroke: "Task", r: n, tip: tip_opts,
+    channels: { ...channels, "95% CI": ci_channel(lo, hi) }
+  }),
+  Plot.tickX(pooled(rows, x, weight, { fisher }), { x: "value", y: "Task", stroke: "black", strokeWidth: 2 })
+]
+
+// put an input's label on its own line above its options (see _style)
+stacked = (input) => {
+  input.classList.add("stacked-input")
+  return input
+}
 
 // slider for the minimum value of a sample size variable
 min_n_input = (label) => {
@@ -56,105 +233,250 @@ min_n_input = (label) => {
   fill()
   return form
 }
+
+// formatting function for how two ended slider displays selected range
+interval_number = ([start, end]) => `[${Plot.formatNumber("en-US")(start)}; ${Plot.formatNumber("en-US")(end)}]`
+
+// two ended slider for a range of a numeric variable
+range_input = (label, range, step, value = range) => interval(range, {
+  label: label, step: step, value: value, format: interval_number, color: "#f7ca69", width: "95%"
+})
 ```
 
-::: {.plot-inputs}
+```{ojs filter-stats}
+//| output: false
+in_range = (x, [min, max]) => x != null && x >= min && x <= max
+
+// stats for runs in the age range, optionally only each child's earliest one of
+// those on a task. computed apart from the min n filter, so that dragging its
+// slider doesn't rerun the bootstrap
+stats_age = {
+  const rs = runs.filter(d => in_range(d.age, age_range))
+  const rs_set = run_set === "all" ? rs
+    : d3.flatRollup(rs, g => d3.least(g, d => d.date), d => d.user_id, d => d.task_id, d => d.task_code)
+        .map(([user_id, task_id, task_code, r]) => r)
+  return score_stats(rs_set)
+}
+stats_n_scores = stats_age.filter(d => d.n_scores >= min_n_scores)
+
+// pairs of the selected runs, with the age at the first run in the age range
+// and the gap in the gap range
+retest_n_pairs = retest_stats(pairs.filter(d =>
+    pair_runs.includes(d.runs) && in_range(d.age_1, retest_age_range) && in_range(d.gap, gap_range)))
+  .filter(d => d.n_pairs >= retest_min_n)
+```
+
+::::: {layout="[ [1,3,3], [1,3,3] ]"}
+
+:::: {.panel-input}
+
+::: {.side-inputs}
+
+::: {.filters-container}
 
 ```{ojs input-min-n-scores}
 viewof min_n_scores = url_bound("min_n", min_n_input("Min N scores"))
 ```
 
-:::
-
-```{ojs filter-n-scores}
-//| output: false
-stats_n_scores = stats_coded.filter(d => d.n_scores >= min_n_scores)
-
-// order of tasks for every plot's y axis and colors -- by highest reliability,
-// with tasks that have none last
-task_order = d3.groupSort(stats_coded,
-  g => -(d3.max(g, d => d.empirical_rxx) ?? -Infinity),
-  d => d.Task)
+```{ojs input-age}
+viewof age_range = url_bound("age", range_input("Age (years)", [2, 16], 0.5))
 ```
 
-::: {layout="[ [1,1] ]"}
+```{ojs input-runs}
+run_opts = new Map([["All", "all"], ["First per child", "first"]])
+viewof run_set = url_bound("set", Inputs.radio(run_opts, { label: "Assessment set", value: "all" }), { choices: run_opts })
+```
+
+:::
+
+:::
+::::
+
+::: {.plot-container .plot-bottom}
 
 ```{ojs plot-reliability}
 // reliability
 Plot.plot({
   ...stats_opts,
+  title: "Score reliability",
   x: { label: "Empirical reliability", line: true, domain: [0, 1] },
   marks: [
-    Plot.dot(stats_n_scores, {
-      x: "empirical_rxx",
-      y: "Task",
-      stroke: "Task",
-      r: "n_scores",
-      tip: true,
-      channels: tip_vars
-    })
-]
-})
-```
-
-```{ojs plot-age}
-// age correlation
-Plot.plot({
-  ...stats_opts,
-  x: { label: "Age correlation", line: true },
-  marks: [
-    Plot.dot(stats_n_scores, {
-      x: "cor_score_age",
-      y: "Task",
-      stroke: "Task",
-      r: "n_scores",
-      tip: true,
-      channels: tip_vars
-    })
-]
+    ...stat_marks(stats_n_scores, {
+      x: "empirical_rxx", lo: "rxx_lo", hi: "rxx_hi", n: "n_scores", weight: d => d.n_scores,
+      channels: score_channels
+    }),
+    // say why tasks shown have no reliability, rather than leave an empty row
+    Plot.text(
+      d3.groups(stats_n_scores, d => d.Task)
+        .filter(([, g]) => g.every(d => !Number.isFinite(d.empirical_rxx)))
+        .map(([Task]) => ({ Task })),
+      { x: 0, y: "Task", text: () => "not IRT-scored", textAnchor: "start", fill: "gray", fontStyle: "italic" }
+    )
+  ]
 })
 ```
 
 :::
 
+::: {.plot-container .plot-bottom}
+
+::: {.plot-inputs}
+
+```{ojs input-age-stat}
+age_stat_opts = new Map([["Correlation", "cor"], ["Slope", "slope"]])
+viewof age_stat = url_bound("age_stat", Inputs.radio(age_stat_opts, { label: "Age statistic", value: "cor" }), { choices: age_stat_opts })
+```
+
+:::
+
+```{ojs plot-age}
+// age correlation or slope
+age_stat === "cor"
+  ? Plot.plot({
+      ...stats_opts,
+      title: "Score–age correlation",
+      x: { label: "Age correlation", line: true },
+      marks: stat_marks(stats_n_scores, {
+        x: "cor_score_age", lo: "age_lo", hi: "age_hi", n: "n_scores", weight: d => d.n_scores - 3,
+        fisher: true, channels: score_channels
+      })
+    })
+  : Plot.plot({
+      ...stats_opts,
+      title: "Score–age slope",
+      x: { label: "Age slope (SDs per year)", line: true },
+      marks: stat_marks(stats_n_scores, {
+        x: "slope_age", lo: "slope_lo", hi: "slope_hi", n: "n_scores", weight: d => d.slope_se ** -2,
+        channels: score_channels
+      })
+    })
+```
+
+:::
+
+::: {}
+&nbsp;
+:::
+
+::: {}
+::: {.callout-note .stats-note collapse="true"}
+## {{< bi info-circle class=header-icon >}}About these statistics
+
+::: {.info-text}
+Each dot is one dataset, sized proportional to its number of scores, with a line for its 95% confidence interval. The black tick is the average across the datasets shown. Scores without an age are left out, and the **first per child** option uses only each child's earliest assessment on a task within the age range.
+
+**Empirical reliability** is var(θ) / (var(θ) + mean(SE^2^)) over the ability scores θ and their standard errors. Its confidence interval is from a bootstrap of scores (500 resamples); the average weights datasets by number of scores. Sentence Reading scores have no standard errors, so no reliability.
+
+**Age correlation** is the Pearson correlation of scores with age. Its confidence interval is from Fisher's z, and the average is of Fisher's z, weighted by N − 3.
+
+Note that reliability and age correlation both depend on how spread out ages are in a dataset: a narrower age range gives lower values.
+
+**Age slope** is the least squares slope of scores on age, with scores divided by the SD of all scores from their scoring model. So the units are score SDs per year, and it doesn't depend on a dataset's age range. It's comparable across datasets that share a scoring model, but less so across tasks or scoring models, since each one's SD depends on the ages and datasets it has scores for. Its confidence interval is ±1.96 standard errors, and the average is weighted by inverse variance.
+:::
+:::
+:::
+
+
+::: {}
+&nbsp;
+:::
+
+:::::
+
+-----
+
+::::: {layout="[ [1,3,3] ]"}
+
+:::: {.panel-input}
+
+::: {.side-inputs}
+
+::: {.filters-container}
+
+```{ojs input-retest-min-n}
+viewof retest_min_n = url_bound("retest_min_n", min_n_input("Min N pairs"))
+```
+
+```{ojs input-pairs}
+pair_opts = new Map([["1→2", "1-2"], ["2→3", "2-3"]])
+viewof pair_runs = url_bound("pairs", stacked(Inputs.checkbox(pair_opts, { label: "Assessment pair", value: [...pair_opts.values()] })), { choices: pair_opts })
+```
+
+```{ojs input-gap}
+viewof gap_range = url_bound("gap", range_input("Retest gap (months)", [0, 30], 1, [2, 30]))
+```
+
+```{ojs input-retest-age}
+viewof retest_age_range = url_bound("retest_age", range_input("Age at first assessment (years)", [2, 16], 0.5))
+```
+
+:::
+
+:::
+::::
+
+::: {.plot-container}
+
 ```{ojs plot-retest}
 // test-retest correlation
 Plot.plot({
   ...stats_opts,
+  title: "Test–retest correlation",
   x: { label: "Test-retest correlation", line: true },
-  marks: [
-    Plot.dot(stats_coded.filter(d => d.n_1_2 >= min_n_scores), {
-      x: "trt_1_2",
-      y: "Task",
-      stroke: "Task",
-      r: "n_1_2",
-      tip: true,
-      channels: tip_vars
-    })
-]
+  marks: stat_marks(retest_n_pairs, {
+    x: "trt", lo: "trt_lo", hi: "trt_hi", n: "n_pairs", weight: d => d.n_pairs - 3, fisher: true,
+    channels: { "Dataset": "dataset", "Median gap (months)": { value: d => d.gap_median.toFixed(1), label: "Median gap (months)" } }
+  })
 })
 ```
+
+::: {.callout-note .stats-note collapse="true"}
+## {{< bi info-circle class=header-icon >}}About these statistics
+
+::: {.info-text}
+Each dot is one dataset, sized by its number of pairs, with a line for its 95% interval (from Fisher's z). The black tick is the average across the datasets shown, of Fisher's z weighted by N − 3.
+
+A pair is two consecutive assessments of the same child on the same task, ordered by start time: **1→2** is their first and second assessments, **2→3** their second and third. The **retest gap** is the time between the two assessments' starts, and the **age** is the child's age at the first assessment.
+
+**Test-retest correlation** is the Pearson correlation of the two assessments' scores. Over longer gaps it reflects children's development (stability of their rank order) as well as the reliability of measurement.
+:::
+:::
+
+:::
+
+::: {}
+&nbsp;
+:::
+
+:::::
 
 :::
 
 ```{ojs redivis}
 redivis = import("https://cdn.jsdelivr.net/npm/redivis@0.4.2/+esm")
 
-// get stats table from workflow
-async function getStats() {
-  console.log('getting stats')
-  // sign in with workflow read access up front -- the browser client otherwise
-  // signs in with only data access, and then makes the user sign in again when
-  // the workflow table request is rejected for its scope
-  await redivis.authorize({ scope: 'workflow.read' })
-  const rows = await redivis
-    .user('mikabr')
-    .workflow('levante_data_latest_psychometrics:xhxj')
-    .table('task_x_dataset_combined:h9gb')
-    .toRowsArray()
-  console.log('got stats')
-  return rows;
+// get scores table from levante-data-latest, along with the dataset's properties
+// (for its version)
+async function getScores() {
+  console.log('getting scores')
+  const dataset = await redivis
+    .organization('levante')
+    .dataset('levante_data_latest:e9pf')
+    .get()
+  const rows = await dataset
+    .table('scores')
+    .toRowsArray({
+      variables: ['dataset', 'task_id', 'task_code', 'user_id', 'score', 'score_se', 'score_type',
+                  'scoring_model', 'age', 'time_started'],
+      temporal: false
+    })
+  console.log('got scores')
+  return { rows, dataset: dataset.properties, loaded: new Date() };
 }
 
-stats = await getStats()
+// the load's promise is kept in an object so that cells can handle it failing
+// (a cell referring to a rejected cell just errors)
+data_load = ({ promise: getScores() })
+data = data_load.promise
+scores = data.rows
 ```

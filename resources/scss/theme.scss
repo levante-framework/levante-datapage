@@ -11,11 +11,12 @@ $primary: #f7ca69;
 	src: url("resources/fonts/whitney-book.otf");
 }
 
-// whitney book is missing minus sign codepoint, add from another font
+// whitney book is missing minus sign codepoint (and has a wrong plus-minus sign),
+// add from another font
 @font-face {
   font-family: whitney-book;
   src: url("resources/fonts/SourceSansPro-Regular.ttf");
-  unicode-range: U+2212;
+  unicode-range: U+2212, U+00B1;
 }
 
 //body { overflow: hidden; }

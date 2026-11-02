@@ -6,16 +6,25 @@
 // and the parameter is updated whenever the input changes, with it left out
 // when the input is at its default value
 //
-// choices: Map of option labels to values for radio/select inputs, which are
-// stored by label (their values can be null or data); otherwise the value is
-// stored as a number
+// choices: Map of option labels to values for radio/select/checkbox inputs,
+// which are stored by label (their values can be null or data), comma separated
+// for checkboxes; otherwise the value is stored as a number, or as comma
+// separated numbers for intervals
 url_bound = (key, input, { choices } = {}) => {
-  const encode = choices
-    ? v => [...choices].find(([label, value]) => value === v)?.[0]
+  const is_number = s => s !== "" && Number.isFinite(+s)
+  const label_of = v => [...choices].find(([label, value]) => value === v)?.[0]
+  const encode = choices && Array.isArray(input.value)
+    ? v => v.map(label_of).join(",")
+    : choices
+    ? label_of
     : v => String(v)
-  const decode = choices
+  const decode = choices && Array.isArray(input.value)
+    ? s => { const v = s === "" ? [] : s.split(","); return v.every(l => choices.has(l)) ? { value: v.map(l => choices.get(l)) } : null }
+    : choices
     ? s => choices.has(s) ? { value: choices.get(s) } : null
-    : s => s !== "" && Number.isFinite(+s) ? { value: +s } : null
+    : Array.isArray(input.value)
+    ? s => { const v = s.split(","); return v.length === 2 && v.every(is_number) ? { value: v.map(Number) } : null }
+    : s => is_number(s) ? { value: +s } : null
 
   const default_param = encode(input.value)
   const param = new URLSearchParams(location.search).get(key)
