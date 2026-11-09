@@ -420,7 +420,7 @@ viewof retest_age_range = url_bound("retest_age", range_input("Age at first asse
 Plot.plot({
   ...stats_opts,
   title: "Test–retest correlation",
-  x: { label: "Test-retest correlation", line: true },
+  x: { label: "Test-retest correlation", line: true, domain: [0, 1] },
   marks: stat_marks(retest_n_pairs, {
     x: "trt", lo: "trt_lo", hi: "trt_hi", n: "n_pairs", weight: d => d.n_pairs - 3, fisher: true,
     channels: { "Dataset": "dataset", "Median gap (months)": { value: d => d.gap_median.toFixed(1), label: "Median gap (months)" } }
