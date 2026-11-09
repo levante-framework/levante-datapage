@@ -627,8 +627,11 @@ async function getScores(dataset) {
   return rows;
 }
 
-// get references to all LEVANTE datasets (with "properties" populated)
+// get references to all LEVANTE datasets (with "properties" populated). signs in
+// first, since listing datasets works anonymously, but then gives only their
+// public access level
 async function getDatasets() {
+  await redivis.authorize()
   const ds = await redivis
     .organization('LEVANTE')
     .listDatasets()
