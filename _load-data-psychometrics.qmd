@@ -1,0 +1,14 @@
+```{r load-scores}
+# load data from redivis
+user <- redivis::redivis$user("levante")
+dataset <- user$dataset("levante_data_pilots:68kn")
+scores <- dataset$table("scores:pgms")$to_tibble(
+  variables = c("dataset", "task_id", "task_code", "user_id", "score", "score_se",
+                "score_type", "scoring_model", "age", "time_started")
+)
+props <- dataset$get()$properties
+
+# pass to OJS, along with which dataset and version the scores are from
+ojs_define(data = scores,
+           data_source = list(name = props$name, version = props$version$tag, url = props$url))
+```

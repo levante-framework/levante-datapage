@@ -1,3 +1,5 @@
+{{< include _load-data-psychometrics.qmd >}}
+
 {{< include components/_interval.qmd >}}
 {{< include components/_tol.qmd >}}
 {{< include components/_style.qmd >}}
@@ -23,10 +25,24 @@ task_info = ({
    "swr": "Word Reading",
 })
 
+// time_started is always utc, but arrives in two formats: "2024-05-07 09:06:25"
+// via ojs_define from the r loader, and iso ("2024-05-07T13:05:41.810Z") from the
+// redivis js client used by the data source switcher
+parse_time = (t) => {
+  if (t == null) return null
+  if (t instanceof Date) return t
+  return d3.utcParse("%Y-%m-%d %H:%M:%S")(t) || d3.isoParse(t)
+}
+
+// scores and which dataset and version they're from, starting with those
+// loaded at render (replaced by the data source switcher)
+mutable source = ({ rows: transpose(data), ...data_source })
+scores = source.rows
+
 // scored runs
 runs = scores
   .filter(d => d.score != null)
-  .map(d => ({ ...d, date: d3.isoParse(d.time_started) }))
+  .map(d => ({ ...d, date: parse_time(d.time_started) }))
 
 // sd of all scores from each scoring model (of each task), regardless of the
 // inputs, to put age slopes in sds per year (as in the tasks paper)
@@ -145,26 +161,11 @@ task_order = d3.groupSort(score_stats(runs),
   d => d.Task)
 ```
 
-::: {.column-screen-inset .stats-page}
-
-::: {.stats-loading}
-<span class="spinner-border spinner-border-sm" role="status"></span> Loading data from Redivis (sign in if prompted)...
-:::
-
-```{ojs page-status}
-//| output: false
-// show the page's inputs and plots only once the data is loaded (see
-// layout.scss), and say why if it couldn't be
-data_load.promise.then(
-  () => document.querySelector(".stats-page").classList.add("loaded"),
-  (e) => {
-    document.querySelector(".stats-loading").textContent = `Couldn't load data from Redivis: ${e.message}`
-  })
-```
+::: {.column-screen-inset}
 
 ```{ojs data-version}
-// which version of the data the page is showing, since it always loads the latest
-html`<p class="info-text">Data: <a href="${data.dataset.url}">levante_data_latest</a> ${data.dataset.version?.tag ?? ""}, loaded ${d3.timeFormat("%Y-%m-%d %H:%M")(data.loaded)}</p>`
+// which dataset and version the page is showing
+html`<p class="info-text">Data: <a href="${source.url}">${source.name}</a> ${source.version}</p>`
 ```
 
 ```{ojs plot-opts}
@@ -287,9 +288,15 @@ run_opts = new Map([["All", "all"], ["First per child", "first"]])
 viewof run_set = url_bound("set", Inputs.radio(run_opts, { label: "Assessment set", value: "all" }), { choices: run_opts })
 ```
 
+```{ojs input-age-stat}
+age_stat_opts = new Map([["Correlation", "cor"], ["Slope", "slope"]])
+viewof age_stat = url_bound("age_stat", Inputs.radio(age_stat_opts, { label: "Age statistic", value: "cor" }), { choices: age_stat_opts })
+```
+
 :::
 
 :::
+
 ::::
 
 ::: {.plot-container .plot-bottom}
@@ -319,15 +326,6 @@ Plot.plot({
 :::
 
 ::: {.plot-container .plot-bottom}
-
-::: {.plot-inputs}
-
-```{ojs input-age-stat}
-age_stat_opts = new Map([["Correlation", "cor"], ["Slope", "slope"]])
-viewof age_stat = url_bound("age_stat", Inputs.radio(age_stat_opts, { label: "Age statistic", value: "cor" }), { choices: age_stat_opts })
-```
-
-:::
 
 ```{ojs plot-age}
 // age correlation or slope
@@ -403,7 +401,7 @@ viewof pair_runs = url_bound("pairs", stacked(Inputs.checkbox(pair_opts, { label
 ```
 
 ```{ojs input-gap}
-viewof gap_range = url_bound("gap", range_input("Retest gap (months)", [0, 30], 1, [2, 30]))
+viewof gap_range = url_bound("gap", range_input("Retest gap (months)", [0, 30], 1, [2, 12]))
 ```
 
 ```{ojs input-retest-age}
@@ -450,19 +448,72 @@ A pair is two consecutive assessments of the same child on the same task, ordere
 
 :::::
 
+-----
+
+::: {.panel-input .data-source}
+
+{{< bi shuffle >}} _Change data source..._<br>[To change data sources, you need a [Redivis](https://redivis.com) account. Click on "Populate data sources" to log in and list data sources you have access to.]{.info-text}
+
+::: {.data-source-inputs}
+
+```{ojs populate-datasource}
+// populates datasource selector -- first click should open redivis auth pop up
+viewof auth_button = Inputs.button("Populate data sources", {
+  reduce: async () => {
+    const ds = await getDatasets()
+    mutable dn = allowedDatasets(ds)
+  }
+})
+```
+
+```{ojs select-datasource}
+mutable dn = [] // available datasources
+viewof datasource = Inputs.select(dn, { label: "Dataset", format: d => d.name, disabled: !dn.length }) // datasource selector
+```
+
+```{ojs select-version}
+// versions of the selected datasource (next, if any, then latest first)
+versions = datasource ? getVersions(datasource) : []
+viewof version = Inputs.select(versions, { label: "Version", format: v => v.tag, disabled: !versions.length }) // version selector
+```
+
+```{ojs switch-datasource}
+// replaces current scores with scores from selected datasource and version
+viewof switch_datasource_button = Inputs.button("Switch data source", {
+  disabled: !version,
+  reduce: async () => {
+    mutable load_status = `Loading ${datasource.name} ${version.tag}...`
+    try {
+      mutable source = await getScores(version)
+      mutable load_status = ""
+    } catch (e) {
+      mutable load_status = `Couldn't load ${datasource.name} ${version.tag}: ${e.message}`
+    }
+  }
+})
+```
+
+```{ojs load-status}
+mutable load_status = ""
+html`<p class="info-text">${load_status}</p>`
+```
+
+:::
+:::
+
 :::
 
 ```{ojs redivis}
+//| output: false
+
+// load redivis
 redivis = import("https://cdn.jsdelivr.net/npm/redivis@0.4.2/+esm")
 
-// get scores table from levante-data-latest, along with the dataset's properties
-// (for its version)
-async function getScores() {
+// get scores table for a given version of a dataset, along with which dataset
+// and version they're from
+async function getScores(version) {
   console.log('getting scores')
-  const dataset = await redivis
-    .organization('levante')
-    .dataset('levante_data_latest:e9pf')
-    .get()
+  const dataset = await version.dataset().get()
   const rows = await dataset
     .table('scores')
     .toRowsArray({
@@ -471,12 +522,41 @@ async function getScores() {
       temporal: false
     })
   console.log('got scores')
-  return { rows, dataset: dataset.properties, loaded: new Date() };
+  return { rows, name: dataset.properties.name, version: version.tag, url: dataset.properties.url }
 }
 
-// the load's promise is kept in an object so that cells can handle it failing
-// (a cell referring to a rejected cell just errors)
-data_load = ({ promise: getScores() })
-data = data_load.promise
-scores = data.rows
+// get references to all LEVANTE datasets (with "properties" populated). signs in
+// first, since listing datasets works anonymously, but then gives only their
+// public access level
+async function getDatasets() {
+  await redivis.authorize()
+  const ds = await redivis
+    .organization('LEVANTE')
+    .listDatasets()
+  return await Promise.all(ds.map(d => d.get()))
+}
+
+// get versions of a dataset: its next (unreleased) version if it has one that the
+// user can see, then its released versions, latest first. the next version isn't
+// listed, and getting it as a version needs edit scope, so it's looked up as the
+// dataset at that version (which fails if there isn't one)
+async function getVersions(dataset) {
+  const vs = (await dataset.listVersions())
+    .filter(v => v.properties.isReleased && !v.properties.isDeleted)
+    .reverse()
+  const next = await dataset.version("next")
+  const has_next = await next.dataset().get().then(() => true, () => false)
+  return has_next ? [next, ...vs] : vs
+}
+
+// filter datasets by authed user's access + get "processed" datasets
+allowedDatasets = (ds) => {
+  const accessLevels = ["data", "edit"]
+  const defaultDataset = "levante-data-pilots"
+  const datasets = ds.filter(d => accessLevels.includes(d.properties.accessLevel))
+    .filter(d => d.properties.tableCount > 0)
+    .filter(d => !d.name.match("-raw|-metadata-|-example|test-"))
+  return d3.sort(datasets, d => d.name !== defaultDataset, d => d.name)
+}
 ```
+

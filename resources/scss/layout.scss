@@ -46,6 +46,39 @@ form > label, .label:has(+ .form) {
   line-height: normal;
 }
 
+// data source switcher below all of a page's plots: its inputs in a row
+.data-source {
+  padding: 0.5em 1em;
+  margin-top: 1em;
+}
+
+.data-source .data-source-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  column-gap: 1.5em;
+  row-gap: 0.5em;
+  font-size: 0.85em;
+
+  label {
+    width: auto !important;
+  }
+
+  // inputs only as wide as their contents, rather than the default input width
+  form, select {
+    width: auto !important;
+  }
+
+  select {
+    min-width: 10em;
+  }
+
+  // load status: no margin, so that the row's height doesn't change with it
+  p {
+    margin: 0;
+  }
+}
+
 .info-text {
   font-size: smaller;
   p {
@@ -68,16 +101,6 @@ form > label, .label:has(+ .form) {
   flex-direction: column;
   align-items: left;
   row-gap: .5em;
-}
-
-// the psychometrics page hides everything but its loading message until its
-// data is loaded (when it gets the class loaded)
-.stats-page:not(.loaded) > :not(.stats-loading) {
-  display: none;
-}
-
-.stats-page.loaded > .stats-loading {
-  display: none;
 }
 
 // plots side by side where only some have inputs above them: fill the row's
