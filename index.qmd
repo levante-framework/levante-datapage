@@ -37,6 +37,12 @@ ov = overview.map(obj => ({
 
 :::: {.column-screen-inset}
 
+::: {.callout-note .tab-note appearance="simple"}
+::: {.info-text}
+{{< bi info-circle class=header-icon >}}This Overview tab always shows the latest, most up-to-date information about overall data counts and availability.
+:::
+:::
+
 ```{ojs diplay-vals}
 displayScheme = [
   [204, 102, 119], // red

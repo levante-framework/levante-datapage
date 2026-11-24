@@ -127,6 +127,12 @@ var_interval = (v, interval_format, interval_fun = interval) => {
 
 :::::: {.column-screen-inset}
 
+::: {.callout-note .tab-note appearance="simple"}
+::: {.info-text}
+{{< bi info-circle class=header-icon >}}This Scores tab shows scores from the public data release by default, which contains fewer data points than the up-do-date Overview tab. You can also change the data source (see bottom of sidebar).
+:::
+:::
+
 ::::: {layout="[ [25,75] ]"}
 
 :::: {.panel-input}

@@ -16,11 +16,12 @@ items <- params |>
          item_group_label = if_else(is.na(item_group_label), task_code, item_group_label)) |>
   arrange(task_label)
 
-file_link <- \(file_id, version) glue("https://stanford.redivis.com/datasets/e97h-009zz0c49/files/{file_id}?v={version}")
+ds_url <- "https://stanford.redivis.com/datasets/e97h-009zz0c49"
+file_link <- \(file_id, version) glue("{ds_url}/files/{file_id}?v={version}")
 
 models <- items |>
   select(task_code, language, itemtype, registry_version = model_registry_version,
-           n_runs = model_n_runs, added_at, file_id) |>
+         n_runs = model_n_runs, added_at, file_id) |>
   distinct() |>
   mutate(registry_version = registry_version |> str_remove("^v") |> str_replace_all("_", "."),
          file_link = map2_chr(file_id, registry_version, file_link)) |>

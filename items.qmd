@@ -1,6 +1,5 @@
 {{< include _load-data-items.qmd >}}
 
-{{< include components/_tol.qmd >}}
 {{< include components/_style.qmd >}}
 {{< include components/_url-state.qmd >}}
 
@@ -13,13 +12,25 @@ Plot = import("https://esm.sh/@observablehq/plot@0.6.17")
 items = transpose(items_)
 models = transpose(models_)
 
-// create combined item_group and language
-items_coded = items.map(d => ({...d, lang_group_label: `${d.item_group_label} | ${d.language}` }))
+// create combined item_group and language, sort by task
+task_order = ([ "hf", "sds", "mg", "math", "matrix", "mrot", "trog", "vocab", "tom", "pa", "sre", "swr" ])
+items_coded = items
+  .map(d => ({...d, lang_group_label: `${d.item_group_label} | ${d.language}` }))
+  .sort((a, b) => {
+    return task_order.indexOf(a.task_code) - task_order.indexOf(b.task_code)
+  })
+
 // group items by task for task selector
 tasks = d3.group(items_coded, d => d.task_label)
 ```
 
 ::: {.column-screen-inset}
+
+::: {.callout-note .tab-note appearance="simple"}
+::: {.info-text}
+{{< bi info-circle class=header-icon >}}This Items tab shows estimated difficulty by item group. Item groups are clusters of items defined _a priori_ based on conceptual similarity, and were not used to estimate the scores themselves.
+:::
+:::
 
 ```{ojs task}
 viewof task_items = url_bound("task", Inputs.select(tasks, { label: "Task", value: tasks.get("Math") }), { choices: tasks })
@@ -29,7 +40,7 @@ viewof task_items = url_bound("task", Inputs.select(tasks, { label: "Task", valu
 //| output: false
 
 // channels for item tooltips
-item_vars = ["item_group", "item_group_label", "item_uid", "n_responses", "difficulty"]
+item_vars = ["item_group_label", "item_uid", "n_responses", "guessing"]
 item_channels = Object.fromEntries(item_vars.map(k => [k, k]))
 
 task = task_items[0].task_code // current items' task code
@@ -66,10 +77,10 @@ heights = ({
   "swr":    600
 })
 
-// shared options for both plots
+// shared options for both parameter plots
 item_opts = ({
          style: { fontFamily: "var(--sans-serif)", fontSize: 12, overflow: "visible" },
-         width: 700,
+         width: 800,
         height: heights[task],
     marginLeft: 200,
      marginTop: 50,
@@ -86,12 +97,12 @@ item_opts = ({
 item_dots = (x_var) => {
   return Plot.marks(
     Plot.dot(task_items, Plot.dodgeY("middle", {
-    x: x_var,
-    fy: by_lang ? "lang_group_label" : "item_group_label",
-    fill: groups.length > 1 ? "item_group_label" : "language",
-    r: "n_responses",
-    tip: { format: { fy: false }, anchor: "left" },
-    channels: item_channels
+      x: x_var,
+      fy: by_lang ? "lang_group_label" : "item_group_label",
+      fill: groups.length > 1 ? "item_group_label" : "language",
+      r: "n_responses",
+      tip: { format: { fy: false } }, //, anchor: "left"
+      channels: item_channels
     }))
   )
 }
@@ -102,21 +113,99 @@ item_dots = (x_var) => {
 html`<div class="source"><a href="${model.file_link}" target="_blank">Source</a>: ${model.itemtype} IRT model (${model.invariance_label}) fit to ${model.n_runs} runs, uploaded on ${model.added_at} to model registry version ${model.registry_version}.</div>`
 ```
 
+:::: {layout="[ [1.25,1] ]"}
+
+::: {.plot-container  .plot-bottom}
+
 ```{ojs plot-difficulty}
 // item difficulties plot
-Plot.plot({
+plot_d = Plot.plot({
   ...item_opts,
   marks: item_dots("difficulty")
 })
-```
 
-```{ojs plot-discrimination}
 // item discriminations plot -- hide if model isn't 2PL
-model.itemtype !== "2PL" ? html`<div></div>` :
+plot_a = model.itemtype !== "2PL" ? html`<div></div>` :
 Plot.plot({
   ...item_opts,
   marks: item_dots("discrimination")
 })
+```
+
+:::
+
+::: {.plot-container .plot-bottom}
+
+```{ojs plot-icc}
+// item characteristic curve plot
+Plot.plot({
+  style: { fontFamily: "var(--sans-serif)", fontSize: 12, overflow: "visible" },
+  className: "icc-plot",
+  width: 250,
+  height: 250,
+  marginBottom: 40,
+  x: {
+    line: true,
+    label: "ability",
+    domain: [theta_min, theta_max],
+    ticks: d3.range(theta_min, theta_max, 2.5).concat(theta_max)
+  },
+  y: {
+    line: true,
+    label: "probability correct",
+    domain: [0, 1],
+    ticks: d3.range(0, 1, 0.25).concat(1)
+  },
+  color: plot_d.scale("color"), // use color scale from difficulty plot
+  subtitle: item ? item_label(item) : "",
+  marks: [
+    Plot.ruleY([item?.guessing || null], {
+      stroke: "lightgrey",
+      strokeDasharray: "4 3",
+      strokeLinecap: "round"
+    }),
+    Plot.line(item_icc, {
+      x: "theta",
+      y: "p",
+      stroke: groups.length > 1 ? "item_group_label" : "language"
+    })
+  ]
+})
+
+// label item with item_uid, add language in parentheses if defined
+item_label = (item) => item.language ? `${item.item_uid} (${item.language})`: item.item_uid
+```
+
+:::
+
+::::
+
+```{ojs}
+//| output: false
+
+// IRF (item response function)
+// theta = ability, a = discrimination, b = difficulty, c = lower bound
+irf = (theta, a, b, c) => c + (1 - c) / (1 + Math.exp(-a * (theta - b)))
+
+// theta array
+theta_min = -5
+theta_max = 5
+thetas = d3.range(theta_min, theta_max, 0.01)
+
+// ICC (item characteristic curve)
+icc = (thetas, a, b, c) => thetas.map(t => ({theta: t, p: irf(t, a, b, c)}))
+icc_item = (thetas, item) => icc(thetas, item.discrimination, item.difficulty, item.guessing)
+
+// instantiate item object and its ICC array
+mutable item = null
+item_icc = item ? icc_item(thetas, item).map(d => ({...d, ...item})) : []
+
+// find selected item in item data -- match by item_uid, then by language if defined
+match_item = (vals) => vals ? task_items.filter(d => d.item_uid === vals.item_uid && (d.language === undefined || d.language === vals.language))[0] : null
+
+// add event listeners to parameter plots that set item object based on hovered point
+plot_d.addEventListener("input", (event) => mutable item = match_item(plot_d.value))
+plot_a.addEventListener("input", (event) => mutable item = match_item(plot_a.value))
 ```
 
 :::
