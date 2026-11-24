@@ -13,12 +13,14 @@
 url_bound = (key, input, { choices } = {}) => {
   const is_number = s => s !== "" && Number.isFinite(+s)
   const label_of = v => [...choices].find(([label, value]) => value === v)?.[0]
-  const encode = choices && Array.isArray(input.value)
+  // checkbox values are arrays, but so can be the values of other inputs
+  const multiple = choices && input.querySelector("input[type=checkbox]") !== null
+  const encode = multiple
     ? v => v.map(label_of).join(",")
     : choices
     ? label_of
     : v => String(v)
-  const decode = choices && Array.isArray(input.value)
+  const decode = multiple
     ? s => { const v = s === "" ? [] : s.split(","); return v.every(l => choices.has(l)) ? { value: v.map(l => choices.get(l)) } : null }
     : choices
     ? s => choices.has(s) ? { value: choices.get(s) } : null
